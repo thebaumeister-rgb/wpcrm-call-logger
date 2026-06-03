@@ -1,0 +1,4 @@
+.codex-remote-attachments/
+data/
+*.pyc
+__pycache__/

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1f6f68">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>WPCRM Call Logger</title>
+    <link rel="manifest" href="manifest.webmanifest?v=10">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css?v=10">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">WPCRM</p>
+          <h1>Call Logger</h1>
+        </div>
+        <button class="icon-button" id="reset-form" type="button" aria-label="Clear form" title="Clear form">
+          <span aria-hidden="true">Clear</span>
+        </button>
+      </header>
+
+      <section class="voice-panel" aria-label="Voice entry">
+        <div>
+          <h2>Voice entry</h2>
+          <p id="voice-status">Tap Start and answer each question out loud.</p>
+        </div>
+        <button class="voice-button" id="start-voice" type="button">Start voice</button>
+      </section>
+
+      <form id="call-form" class="entry-form">
+        <section class="field-block">
+          <label for="contact-name">Contact name</label>
+          <input id="contact-name" name="contactName" type="text" autocomplete="name" required placeholder="Robert Connor">
+        </section>
+
+        <section class="field-block">
+          <label for="appointment-subject">Appointment subject</label>
+          <input id="appointment-subject" name="appointmentSubject" type="text" required placeholder="Quote RV16 valve">
+        </section>
+
+        <section class="field-block">
+          <span class="label">Appointment type</span>
+          <div class="segmented-control" role="radiogroup" aria-label="Appointment type">
+            <label>
+              <input type="radio" name="appointmentType" value="Decision-Maker Conference Call" checked>
+              <span>DM call</span>
+            </label>
+            <label>
+              <input type="radio" name="appointmentType" value="Decision-Maker Meeting">
+              <span>DM meeting</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="field-block">
+          <label for="appointment-datetime">Date and time</label>
+          <input id="appointment-datetime" name="appointmentDatetime" type="datetime-local" required>
+        </section>
+
+        <section class="field-block mileage-field is-hidden" id="mileage-field" hidden>
+          <label for="mileage">Mileage</label>
+          <input id="mileage" name="mileage" type="number" min="0" step="0.1" inputmode="decimal" placeholder="0">
+        </section>
+
+        <section class="field-block">
+          <label for="appointment-notes">Appointment notes</label>
+          <textarea id="appointment-notes" name="appointmentNotes" rows="6" required placeholder="Robert called to have an RV16-26A quoted..."></textarea>
+        </section>
+
+        <input type="hidden" name="completed" value="Yes">
+
+        <button class="primary-button" type="submit">Save WPCRM entry</button>
+      </form>
+
+      <section class="toolbar" aria-label="Saved call tools">
+        <button type="button" id="copy-latest">Copy latest</button>
+        <button type="button" id="export-csv">Export CSV</button>
+        <button type="button" id="export-json">Export JSON</button>
+      </section>
+
+      <section class="history-section">
+        <div class="section-heading">
+          <h2>Saved calls</h2>
+          <span id="entry-count">0</span>
+        </div>
+        <div id="empty-state" class="empty-state">No calls saved yet.</div>
+        <ol id="call-list" class="call-list"></ol>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js?v=10" defer></script>
+  </body>
+</html>
