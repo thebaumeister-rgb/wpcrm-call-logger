@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=10">
+    <link rel="manifest" href="manifest.webmanifest?v=11">
     <link rel="apple-touch-icon" href="icon.svg">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
   </head>
   <body>
     <main class="app-shell">
@@ -84,6 +84,21 @@
         <button type="button" id="export-json">Export JSON</button>
       </section>
 
+      <section class="sync-panel" aria-label="OneDrive sync">
+        <div class="section-heading">
+          <div>
+            <h2>OneDrive sync</h2>
+            <p id="onedrive-status">Connect once to save every call to OneDrive automatically.</p>
+          </div>
+          <button type="button" id="onedrive-connect">Connect</button>
+        </div>
+
+        <div class="sync-actions">
+          <button type="button" id="onedrive-sync">Sync now</button>
+          <button type="button" id="onedrive-disconnect">Disconnect</button>
+        </div>
+      </section>
+
       <section class="history-section">
         <div class="section-heading">
           <h2>Saved calls</h2>
@@ -96,6 +111,7 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="app.js?v=10" defer></script>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" defer></script>
+    <script src="app.js?v=11" defer></script>
   </body>
 </html>

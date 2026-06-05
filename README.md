@@ -13,6 +13,7 @@ A mobile-friendly app for recording WPCRM appointment details before entering th
 - Captures appointment notes
 - Saves entries locally on the phone
 - Supports voice-guided entry for driving-style use after tapping Start voice
+- One-click OneDrive connection for automatic JSON sync
 - Exports saved calls as CSV or JSON
 - Copies the latest call as formatted text for WPCRM entry
 
@@ -37,6 +38,25 @@ Phone browsers require a tap before microphone listening can start, so the app c
 The app starts one microphone listening session immediately after the `Start voice` tap and reuses it through the questions. If the browser blocks microphone permission, it will show that in the voice status line instead of ending silently.
 
 Voice entry depends on browser speech support. Chrome on Android is the strongest target. iPhone support may vary by iOS and Safari version.
+
+## OneDrive Sync
+
+The app can sync saved calls to:
+
+```text
+OneDrive/WPCRMCalls/wpcrm-sales-calls.json
+```
+
+For normal users, setup is one click:
+
+1. Tap `Connect` in the OneDrive sync section.
+2. Sign in with the Microsoft/OneDrive account.
+3. The app creates the `WPCRMCalls` folder if needed.
+4. Future saved calls sync automatically to `wpcrm-sales-calls.json`.
+
+Publisher setup is required before the `Connect` button can work. Create a Microsoft Entra app registration for this hosted site, enable SPA redirect URLs for the published GitHub Pages URL, grant Microsoft Graph `Files.ReadWrite`, then paste the app registration client ID into `ONEDRIVE_CLIENT_ID` in `app.js`.
+
+Until that client ID is configured, the app will still save locally and export JSON manually, but OneDrive sync will show a publisher setup message.
 
 ## WPCRM Entry Workflow Captured
 
@@ -81,7 +101,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://192.168.1.15:8081/index.html?v=10
+http://192.168.1.15:8081/index.html?v=11
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

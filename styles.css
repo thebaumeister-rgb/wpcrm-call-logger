@@ -160,6 +160,7 @@ label,
 
 input[type="text"],
 input[type="datetime-local"],
+input[type="number"],
 textarea {
   width: 100%;
   min-height: 48px;
@@ -180,6 +181,56 @@ input:focus,
 textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(31, 111, 104, 0.16);
+}
+
+.sync-panel {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: 0 8px 22px rgba(31, 61, 54, 0.08);
+}
+
+.sync-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.sync-panel p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.sync-panel button {
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.sync-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sync-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.sync-actions button {
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 0.88rem;
+}
+
+#onedrive-connect:disabled {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
 }
 
 .segmented-control {
