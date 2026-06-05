@@ -47,11 +47,11 @@ Recommended end-of-day workflow:
 
 1. Tap `Share JSON`.
 2. Choose the OneDrive app, email, or another available share target.
-3. Save the file as `wpcrm-sales-calls.json`.
+3. Save the timestamped file, for example `wpcrm-sales-calls-2026-06-05-1643.json`.
 4. Put it in a `WPCRMCalls` folder if OneDrive offers folder selection.
 5. On the office PC, use the synced file for the WPCRM upload workflow.
 
-If the browser or phone does not support file sharing from the web app, `Share JSON` falls back to a normal JSON download. `Export JSON` is also available as a direct download option.
+If the browser or phone does not support file sharing from the web app, `Share JSON` falls back to a normal JSON download. `Export JSON` is also available as a direct download option. JSON exports use timestamped filenames so older call logs are not overwritten.
 
 ## WPCRM Entry Workflow Captured
 
@@ -96,7 +96,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://192.168.1.15:8081/index.html?v=12
+http://192.168.1.15:8081/index.html?v=13
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

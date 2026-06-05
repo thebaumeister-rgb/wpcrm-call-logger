@@ -1,5 +1,5 @@
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
-const JSON_EXPORT_FILENAME = "wpcrm-sales-calls.json";
+const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 
 const form = document.querySelector("#call-form");
 const contactName = document.querySelector("#contact-name");
@@ -78,13 +78,27 @@ function getJsonExport() {
   return JSON.stringify(calls, null, 2);
 }
 
+function getTimestampedJsonFilename() {
+  const date = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  const timestamp = [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+  ].join("-");
+  return `${JSON_EXPORT_BASENAME}-${timestamp}.json`;
+}
+
 async function shareJsonExport() {
   if (!calls.length) {
     showToast("No saved calls to share");
     return;
   }
 
-  const file = new File([getJsonExport()], JSON_EXPORT_FILENAME, {
+  const filename = getTimestampedJsonFilename();
+  const file = new File([getJsonExport()], filename, {
     type: "application/json",
   });
 
@@ -98,7 +112,7 @@ async function shareJsonExport() {
     return;
   }
 
-  downloadFile(JSON_EXPORT_FILENAME, getJsonExport(), "application/json");
+  downloadFile(filename, getJsonExport(), "application/json");
   showToast("Sharing unavailable; downloaded JSON");
 }
 
@@ -634,7 +648,7 @@ exportJsonButton.addEventListener("click", () => {
     showToast("No saved calls to export");
     return;
   }
-  downloadFile(JSON_EXPORT_FILENAME, getJsonExport(), "application/json");
+  downloadFile(getTimestampedJsonFilename(), getJsonExport(), "application/json");
 });
 
 shareJsonButton.addEventListener("click", async () => {
