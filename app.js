@@ -1,9 +1,5 @@
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
-const ONEDRIVE_SETTINGS_KEY = "wpcrm-onedrive-settings-v1";
-const ONEDRIVE_CLIENT_ID = "";
-const ONEDRIVE_FOLDER = "WPCRMCalls";
-const ONEDRIVE_FILENAME = "wpcrm-sales-calls.json";
-const GRAPH_SCOPES = ["Files.ReadWrite"];
+const JSON_EXPORT_FILENAME = "wpcrm-sales-calls.json";
 
 const form = document.querySelector("#call-form");
 const contactName = document.querySelector("#contact-name");
@@ -21,16 +17,11 @@ const resetFormButton = document.querySelector("#reset-form");
 const copyLatestButton = document.querySelector("#copy-latest");
 const exportCsvButton = document.querySelector("#export-csv");
 const exportJsonButton = document.querySelector("#export-json");
-const oneDriveStatus = document.querySelector("#onedrive-status");
-const oneDriveConnectButton = document.querySelector("#onedrive-connect");
-const oneDriveSyncButton = document.querySelector("#onedrive-sync");
-const oneDriveDisconnectButton = document.querySelector("#onedrive-disconnect");
+const shareJsonButton = document.querySelector("#share-json");
 const startVoiceButton = document.querySelector("#start-voice");
 const voiceStatus = document.querySelector("#voice-status");
 
 let calls = loadCalls();
-let oneDriveSettings = loadOneDriveSettings();
-let msalClient = null;
 let toastTimer;
 let voiceActive = false;
 let voiceRecognition = null;
@@ -83,191 +74,32 @@ function saveCalls() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(calls));
 }
 
-function loadOneDriveSettings() {
-  try {
-    const raw = localStorage.getItem(ONEDRIVE_SETTINGS_KEY);
-    const saved = raw ? JSON.parse(raw) : {};
-    return {
-      connected: Boolean(saved.connected),
-      accountName: saved.accountName || "",
-    };
-  } catch {
-    return {
-      connected: false,
-      accountName: "",
-    };
-  }
-}
-
-function saveOneDriveSettings(settings = oneDriveSettings) {
-  oneDriveSettings = {
-    connected: Boolean(settings.connected),
-    accountName: settings.accountName || "",
-  };
-  localStorage.setItem(ONEDRIVE_SETTINGS_KEY, JSON.stringify(oneDriveSettings));
-  renderOneDriveSettings();
-}
-
-function disconnectOneDrive() {
-  oneDriveSettings = {
-    connected: false,
-    accountName: "",
-  };
-  localStorage.setItem(ONEDRIVE_SETTINGS_KEY, JSON.stringify(oneDriveSettings));
-  renderOneDriveSettings();
-  showToast("OneDrive disconnected");
-}
-
-function renderOneDriveSettings() {
-  const publisherReady = Boolean(ONEDRIVE_CLIENT_ID);
-  const connected = publisherReady && oneDriveSettings.connected;
-  const folderPath = `OneDrive/${ONEDRIVE_FOLDER}/${ONEDRIVE_FILENAME}`;
-
-  if (!publisherReady) {
-    oneDriveStatus.textContent = "Publisher setup needed: add the Microsoft app client ID before OneDrive can connect.";
-  } else if (connected) {
-    const account = oneDriveSettings.accountName ? ` as ${oneDriveSettings.accountName}` : "";
-    oneDriveStatus.textContent = `Connected${account}. Auto-syncing to ${folderPath}`;
-  } else {
-    oneDriveStatus.textContent = `Connect once to create ${folderPath} and auto-sync every save.`;
-  }
-
-  oneDriveConnectButton.textContent = connected ? "Connected" : "Connect";
-  oneDriveConnectButton.disabled = !publisherReady || connected;
-  oneDriveSyncButton.disabled = !connected;
-  oneDriveDisconnectButton.disabled = !connected;
-}
-
 function getJsonExport() {
   return JSON.stringify(calls, null, 2);
 }
 
-function createMsalClient() {
-  if (!ONEDRIVE_CLIENT_ID) {
-    throw new Error("OneDrive is not ready yet. Add the Microsoft app client ID in app.js.");
-  }
-
-  if (!window.msal) {
-    throw new Error("Microsoft sign-in library did not load. Check your connection and refresh.");
-  }
-
-  if (!msalClient) {
-    msalClient = new msal.PublicClientApplication({
-      auth: {
-        clientId: ONEDRIVE_CLIENT_ID,
-        authority: "https://login.microsoftonline.com/common",
-        redirectUri: window.location.origin + window.location.pathname,
-      },
-      cache: {
-        cacheLocation: "localStorage",
-      },
-    });
-  }
-
-  return msalClient;
-}
-
-async function getOneDriveAccessToken() {
-  const client = createMsalClient();
-  const accounts = client.getAllAccounts();
-  const request = {
-    scopes: GRAPH_SCOPES,
-    account: accounts[0],
-  };
-
-  if (request.account) {
-    try {
-      const response = await client.acquireTokenSilent(request);
-      return response.accessToken;
-    } catch {
-      // Fall through to interactive sign-in.
-    }
-  }
-
-  const response = await client.loginPopup({ scopes: GRAPH_SCOPES });
-  saveOneDriveSettings({
-    connected: true,
-    accountName: response.account?.username || response.account?.name || "",
-  });
-  return response.accessToken;
-}
-
-function graphPath(path) {
-  return encodeURIComponent(path).replaceAll("%2F", "/");
-}
-
-async function graphRequest(path, options = {}) {
-  const token = await getOneDriveAccessToken();
-  const response = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
-  });
-
-  return response;
-}
-
-async function ensureOneDriveFolder() {
-  const check = await graphRequest(`/me/drive/root:/${graphPath(ONEDRIVE_FOLDER)}`);
-  if (check.ok) return;
-
-  const create = await graphRequest("/me/drive/root/children", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: ONEDRIVE_FOLDER,
-      folder: {},
-      "@microsoft.graph.conflictBehavior": "replace",
-    }),
-  });
-
-  if (!create.ok) {
-    const details = await create.text();
-    throw new Error(`Could not create OneDrive folder (${create.status}). ${details.slice(0, 160)}`);
-  }
-}
-
-async function syncCallsToOneDrive() {
+async function shareJsonExport() {
   if (!calls.length) {
-    showToast("No saved calls to sync");
-    return false;
+    showToast("No saved calls to share");
+    return;
   }
 
-  oneDriveStatus.textContent = "Checking OneDrive folder...";
-  await ensureOneDriveFolder();
-
-  oneDriveStatus.textContent = "Uploading JSON to OneDrive...";
-  const filePath = `${ONEDRIVE_FOLDER}/${ONEDRIVE_FILENAME}`;
-  const response = await graphRequest(`/me/drive/root:/${graphPath(filePath)}:/content`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: getJsonExport(),
+  const file = new File([getJsonExport()], JSON_EXPORT_FILENAME, {
+    type: "application/json",
   });
 
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`OneDrive upload failed (${response.status}). ${details.slice(0, 160)}`);
+  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+    await navigator.share({
+      title: "WPCRM sales calls",
+      text: "Save this JSON file to OneDrive/WPCRMCalls.",
+      files: [file],
+    });
+    showToast("Share sheet opened");
+    return;
   }
 
-  oneDriveStatus.textContent = `Synced to OneDrive/${filePath}`;
-  showToast("Synced to OneDrive");
-  return true;
-}
-
-async function autoSyncCalls() {
-  if (!oneDriveSettings.connected || !calls.length) return;
-  try {
-    await syncCallsToOneDrive();
-  } catch (error) {
-    oneDriveStatus.textContent = error.message || "OneDrive sync failed";
-    showToast("OneDrive sync failed");
-  }
+  downloadFile(JSON_EXPORT_FILENAME, getJsonExport(), "application/json");
+  showToast("Sharing unavailable; downloaded JSON");
 }
 
 function showToast(message) {
@@ -328,7 +160,6 @@ function saveCurrentForm() {
   renderCalls();
   resetForm();
   showToast("Call saved");
-  autoSyncCalls();
   return true;
 }
 
@@ -803,34 +634,16 @@ exportJsonButton.addEventListener("click", () => {
     showToast("No saved calls to export");
     return;
   }
-  downloadFile("wpcrm-sales-calls.json", getJsonExport(), "application/json");
+  downloadFile(JSON_EXPORT_FILENAME, getJsonExport(), "application/json");
 });
 
-oneDriveConnectButton.addEventListener("click", async () => {
+shareJsonButton.addEventListener("click", async () => {
   try {
-    oneDriveStatus.textContent = "Opening Microsoft sign-in...";
-    await getOneDriveAccessToken();
-    oneDriveStatus.textContent = "Creating OneDrive folder...";
-    await ensureOneDriveFolder();
-    renderOneDriveSettings();
-    showToast("OneDrive connected");
-    if (calls.length) await syncCallsToOneDrive();
+    await shareJsonExport();
   } catch (error) {
-    oneDriveStatus.textContent = error.message || "OneDrive connection failed";
-    showToast("OneDrive connection failed");
+    showToast(error.message || "Share failed; export instead");
   }
 });
-
-oneDriveSyncButton.addEventListener("click", async () => {
-  try {
-    await syncCallsToOneDrive();
-  } catch (error) {
-    oneDriveStatus.textContent = error.message || "OneDrive sync failed";
-    showToast("OneDrive sync failed");
-  }
-});
-
-oneDriveDisconnectButton.addEventListener("click", disconnectOneDrive);
 
 startVoiceButton.addEventListener("click", () => {
   if (voiceActive) {
@@ -848,5 +661,4 @@ if ("serviceWorker" in navigator) {
 
 appointmentDatetime.value = nowForInput();
 updateMileageVisibility();
-renderOneDriveSettings();
 renderCalls();
