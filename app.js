@@ -1,3 +1,4 @@
+const APP_VERSION = 23;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -458,26 +459,53 @@ document.querySelector("#install-app").addEventListener("click", async () => {
   installPrompt = null;
   document.querySelector("#install-app").hidden = true;
 });
+let availableVersion = null;
+function reportUpdate(message) {
+  document.querySelector("#update-status").textContent = message;
+}
+
+function reloadAvailableUpdate() {
+  if (!availableVersion) return;
+  const unfinished = hasDraft() || document.querySelector("#spoken-summary").value.trim() || appointmentDatetime.value || appointmentEndDatetime.value || appointmentStatus.value || mileage.value || new FormData(form).get("appointmentType");
+  const warning = unfinished || voiceActive ? " Any unfinished entry will be cleared and dictation stopped. Saved calls and contacts will remain." : " Saved calls and contacts will remain.";
+  if (!confirm(`Install Version ${availableVersion} and reload now?${warning}`)) return;
+  stopVoiceEntry();
+  const url = new URL("index.html", location.href);
+  url.searchParams.set("v", availableVersion);
+  url.searchParams.set("reload", Date.now());
+  location.assign(url.href);
+}
+
 document.querySelector("#check-update").addEventListener("click", async () => {
-  saveDraft();
+  const button = document.querySelector("#check-update");
+  button.disabled = true;
+  availableVersion = null;
+  document.querySelector("#reload-app").hidden = true;
+  reportUpdate("Checking the published version...");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const registration = await navigator.serviceWorker?.getRegistration();
-    if (!navigator.onLine || !registration) throw new Error("Connect to the internet to check updates.");
-    await registration.update();
-    const worker = registration.installing || registration.waiting;
-    if (!worker) { showToast("No update available"); return; }
-    const offer = () => {
-      if (["installed", "activated"].includes(worker.state)) {
-        worker.removeEventListener("statechange", offer);
-        document.querySelector("#reload-app").hidden = false;
-        showToast("Update ready");
-      }
-    };
-    worker.addEventListener("statechange", offer);
-    offer();
-  } catch (error) { showToast(error.message || "Update check failed"); }
+    if (!navigator.onLine) throw new Error("You are offline. Connect to the internet and try again.");
+    const url = new URL("index.html", location.href);
+    url.searchParams.set("update-check", Date.now());
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!response.ok) throw new Error("Could not check the published app. Please try again.");
+    const latest = new DOMParser().parseFromString(await response.text(), "text/html");
+    const version = Number(latest.querySelector('meta[name="app-version"]')?.content);
+    if (!Number.isInteger(version) || version < 1) throw new Error("The update response could not be verified. Please try again.");
+    if (version < APP_VERSION) throw new Error("The server is returning an older release. Try again shortly.");
+    if (version === APP_VERSION) { reportUpdate(`Version ${APP_VERSION} is up to date.`); return; }
+    availableVersion = version;
+    reportUpdate(`Version ${version} is available. Reload to install it.`);
+    document.querySelector("#reload-app").hidden = false;
+    // Detect the published page version even when the worker has already activated.
+    navigator.serviceWorker?.getRegistration().then(registration => registration?.update()).catch(() => {});
+    reloadAvailableUpdate();
+  } catch (error) {
+    reportUpdate(error.name === "AbortError" ? "Update check timed out. Please try again." : (error.message || "Update check failed. Please try again."));
+  } finally { clearTimeout(timeout); button.disabled = false; }
 });
-document.querySelector("#reload-app").addEventListener("click", () => { saveDraft(); location.reload(); });
+document.querySelector("#reload-app").addEventListener("click", reloadAvailableUpdate);
 
 function showNetworkState() {
   document.querySelector("#connection-status").textContent = navigator.onLine ? "Online" : "Offline";

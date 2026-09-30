@@ -1,12 +1,12 @@
-const CACHE_NAME = "wpcrm-call-logger-v22";
+const CACHE_NAME = "wpcrm-call-logger-v23";
 const ASSETS = [
-  "./entry-tools.js?v=22",
+  "./entry-tools.js?v=23",
   "./papaparse.min.js",
   "./",
   "./index.html",
-  "./styles.css?v=22",
-  "./app.js?v=22",
-  "./manifest.webmanifest?v=22",
+  "./styles.css?v=23",
+  "./app.js?v=23",
+  "./manifest.webmanifest?v=23",
   "./icon-192.png",
   "./icon-512.png",
   "./START-HERE.html",
@@ -31,6 +31,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  if (new URL(event.request.url).searchParams.has("update-check")) {
+    event.respondWith(fetch(event.request, { cache: "no-store" }));
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     event.respondWith(fetch(event.request).catch(async () => {

@@ -2,16 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="app-version" content="23">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f68">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=22">
+    <link rel="manifest" href="manifest.webmanifest?v=23">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=22">
+    <link rel="stylesheet" href="styles.css?v=23">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +25,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 22</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 23</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -120,6 +121,7 @@
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </section>
       <p id="share-status" role="status" hidden></p>
+      <p id="update-status" role="status" aria-live="polite"></p>
       <footer class="toolbar"><button type="button" id="install-app" hidden>Install app</button><button type="button" id="check-update">Check for updates</button><button type="button" id="reload-app" hidden>Reload update</button></footer>
 
       <section class="history-section">
@@ -135,7 +137,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=22" defer></script>
-    <script src="entry-tools.js?v=22" defer></script>
+    <script src="app.js?v=23" defer></script>
+    <script src="entry-tools.js?v=23" defer></script>
   </body>
 </html>
