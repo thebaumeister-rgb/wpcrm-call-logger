@@ -1,4 +1,23 @@
-# Version 28 Review And Proof
+# Version 29 Offline Android Preview: Review And Proof
+
+## Current implementation
+
+Android APK with bundled sherpa-onnx and English speech model. Raw PCM is processed on-device and discarded, not uploaded or saved. Native AudioRecord remains open at phrase endpoints. The decoder can reset after silence without closing/restarting capture. No Android INTERNET permission; remote WebView requests are denied. Browser cloud recognition is disabled. Shared app forms, storage keys and JSON schemas remain compatible with earlier exports.
+
+Stop flushes the model's last words before hiding the microphone panel. Field switching, typing, Save, app backgrounding and microphone errors stop or switch recording. The native bridge uses stable result indices and ignores stale session IDs; it does not use the legacy deduplication heuristic. System file import/export and Android file sharing replace browser download/share APIs inside the APK. Files stay local unless the user selects an external sharing destination.
+
+## Verified locally
+
+- Signed Android release APK builds and its signature verifies.
+- 25 browser/form/bridge checks pass, including native final-word flush, deliberate repeated phrases, no cloud fallback, native exports, saved calls and contacts, update behavior, and migration-compatible JSON.
+- Four Android 15 emulator instrumentation checks pass with airplane mode on: no INTERNET permission; one microphone start and no end through 12 seconds of silence; real bundled speech decoding before and after 12 seconds of silence; installed WebView form saving, local history after reopening, blank new fields and JSON export generation.
+- The initial small 20M model dropped opening words in the known sample. It was replaced before release by the larger Zipformer2 2023-06-26 mobile model, which decoded the full reference sentence correctly both times, including first words. The test now checks the full repeated reference text. This is one public sample, not a general accuracy guarantee; names, part numbers, dates and mileage require review.
+
+## Release limits
+
+This is a preview, not a physical Samsung acceptance claim. Real microphone acoustics, first-word pickup, battery use, Bluetooth/phone interruptions, keyboard positioning, long sessions and the system Files/share destinations must be tested on the S25 Ultra and tablet. No iPhone package has been built. Android and browser storage are separate; export/import existing calls and import the contact directory separately. Do not uninstall either app before backing up records. Signing keys, passwords, SDK caches and customer data are excluded from source and release assets.
+
+## Historical browser fixes (versions 25-28, superseded for native speech)
 
 Version 27 passed simulated tests but the user reported severe sentence duplication on their phone. Version 28 merges matching multiword transcript boundaries, both within result snapshots and across automatic restarts. It also recognizes shorter replay prefixes. It does not deduplicate existing manual text or rewrite saved entries. Intentional single-word repetition in notes and repetition inside one transcript remain intact. Intentional multiword repetition across result boundaries is ambiguous and may be merged; review before saving.
 

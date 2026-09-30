@@ -1,4 +1,4 @@
-const APP_VERSION = 28;
+const APP_VERSION = 29;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -157,6 +157,10 @@ async function shareJsonExport() {
 
   const filename = getTimestampedJsonFilename();
   const contents = getJsonExport();
+  if (window.OfflineAndroid) {
+    OfflineAndroid.exportFile(filename, contents, "application/json", true);
+    return;
+  }
   const file = new File([contents], filename, {
     type: "application/json",
   });
@@ -318,6 +322,10 @@ function toCsv(rows) {
 }
 
 function downloadFile(filename, contents, type) {
+  if (window.OfflineAndroid) {
+    OfflineAndroid.exportFile(filename, contents, type, false);
+    return;
+  }
   const blob = new Blob([contents], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -390,7 +398,7 @@ function updateMileageVisibility() {
 }
 
 function getSpeechRecognition() {
-  return window.SpeechRecognition || window.webkitSpeechRecognition;
+  return window.OfflineSpeechRecognition;
 }
 
 function hasDraft() {
@@ -473,6 +481,7 @@ function reloadAvailableUpdate() {
 }
 
 document.querySelector("#check-update").addEventListener("click", async () => {
+  if (window.OfflineAndroid) { OfflineAndroid.openUpdates(); return; }
   const button = document.querySelector("#check-update");
   button.disabled = true;
   availableVersion = null;
@@ -504,7 +513,7 @@ document.querySelector("#check-update").addEventListener("click", async () => {
 document.querySelector("#reload-app").addEventListener("click", reloadAvailableUpdate);
 
 function showNetworkState() {
-  document.querySelector("#connection-status").textContent = navigator.onLine ? "Online" : "Offline";
+  document.querySelector("#connection-status").textContent = window.OfflineAndroid ? "On-device speech" : (navigator.onLine ? "Online" : "Offline");
 }
 window.addEventListener("online", showNetworkState);
 window.addEventListener("offline", showNetworkState);
@@ -600,6 +609,7 @@ copyLatestButton.addEventListener("click", async () => {
   }
 
   try {
+    if (window.OfflineAndroid) { OfflineAndroid.copyText(callToText(calls[0])); return; }
     await navigator.clipboard.writeText(callToText(calls[0]));
     showToast("Latest call copied");
   } catch {
@@ -632,7 +642,7 @@ shareJsonButton.addEventListener("click", async () => {
   }
 });
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && !window.OfflineAndroid) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch(() => {});
   });
@@ -645,5 +655,5 @@ updateMileageVisibility();
 renderCalls();
 showNetworkState();
 if (!getSpeechRecognition()) {
-  setVoiceStatus("Field dictation unavailable in this browser. Keyboard dictation is still an option.");
+  setVoiceStatus("Offline dictation requires the WPCRM Offline Android app. Typing and exports still work here.");
 }

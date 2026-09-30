@@ -5,3 +5,11 @@ __pycache__/
 release/
 proof/
 node_modules/
+.android-tools/
+android/.gradle/
+android/**/build/
+android/app/libs/*.aar
+android/app/src/main/assets/model/
+android/local.properties
+*.jks
+*.keystore

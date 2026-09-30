@@ -5,6 +5,7 @@ const fieldTargets = new Set(["contact-name", "additional-contacts", "appointmen
 let fieldSession = null;
 
 try { fieldDictationToggle.checked = localStorage.getItem("wpcrm-dictate-on-tap") !== "false"; } catch { /* Optional preference. */ }
+if (!getSpeechRecognition()) { fieldDictationToggle.checked = false; fieldDictationToggle.disabled = true; }
 
 function stopFieldDictation(message = "Microphone stopped. Your entry is kept.") {
   const session = fieldSession;
@@ -129,18 +130,20 @@ function startFieldDictation(target) {
       session.emptyRestarts = 0;
       const results = Array.from(event.results);
       const nameField = target.id === "contact-name";
-      run.text = combineSpeechParts(results.map(result => result[0].transcript.trim()), nameField);
+      const combine = recognition.offline ? parts => parts.filter(Boolean).join(" ") : parts => combineSpeechParts(parts, nameField);
+      run.text = combine(results.map(result => result[0].transcript.trim()));
       const interim = results.filter(result => !result.isFinal).map(result => result[0].transcript).join(" ").trim();
       let errorMessage = "";
       if (isText) {
         // Rebuild this session's insertion from the recognition snapshot, never append a preview twice.
         target.value = session.original;
         target.setSelectionRange(session.start, session.end);
-        const text = combineSpeechParts(session.runs.map(item => item.text), nameField);
+        const text = combine(session.runs.map(item => item.text));
         if (text) writeFieldSpeech(target, text);
         session.rendered = target.value;
       } else {
-        const finalText = combineSpeechParts(results.filter(result => result.isFinal).map(result => result[0].transcript.trim()), false);
+        const finalized = results.filter(result => result.isFinal);
+        const finalText = recognition.offline ? results.slice(event.resultIndex).filter(result => result.isFinal).at(-1)?.[0].transcript.trim() : combineSpeechParts(finalized.map(result => result[0].transcript.trim()), false);
         if (finalText) {
           try { writeFieldSpeech(target, finalText); }
           catch (error) { errorMessage = error.message; }
@@ -160,6 +163,10 @@ function startFieldDictation(target) {
     };
     recognition.onend = () => {
       if (!current()) return;
+      if (recognition.offline) {
+        stopFieldDictation(recognition.finishing ? "Microphone stopped. Your entry is kept." : "Microphone interrupted. Tap a field to resume.");
+        return;
+      }
       runOpen = false;
       clearTimeout(session.startTimer);
       recognition.onstart = recognition.onresult = recognition.onerror = recognition.onend = null;
@@ -178,7 +185,12 @@ fieldDictationToggle.addEventListener("change", () => {
   if (!fieldDictationToggle.checked) stopFieldDictation();
   try { localStorage.setItem("wpcrm-dictate-on-tap", String(fieldDictationToggle.checked)); } catch { showToast("Setting applies for this session only."); }
 });
-document.querySelector("#stop-field-microphone").addEventListener("click", () => stopFieldDictation());
+document.querySelector("#stop-field-microphone").addEventListener("click", () => {
+  if (fieldSession?.recognition.finish) {
+    fieldMicrophoneStatus.textContent = "Finishing last words...";
+    fieldSession.recognition.finish();
+  } else stopFieldDictation();
+});
 document.addEventListener("pointerdown", event => {
   if (fieldSession && event.target.closest("button, a") && !fieldFromTarget(event.target) && !fieldMicrophone.contains(event.target)) stopFieldDictation();
 }, true);

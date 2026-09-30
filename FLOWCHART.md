@@ -1,5 +1,7 @@
 # Call Logger Workflow
 
+Install the Android APK with its bundled English model. Back up and import old browser records once. Browser voice entry is disabled; the APK is required for offline dictation.
+
 1. Open the app with blank entry fields; saved calls remain in history.
 2. Optionally import a verified contact list.
 3. With Dictate on field tap enabled, tap a field and speak its value.
@@ -12,3 +14,5 @@
 10. Enter the exported status, both times and notes; verify each save and track record IDs.
 
 Turning Dictate on field tap off enables normal typing. Scrolling alone does not start listening. Stop never saves the call. There is no spoken-summary box or completion phrase. The app does not automatically upload to WPCRM.
+
+Native microphone -> on-device PCM audio -> bundled speech model -> live phrase preview -> pause commits phrase while microphone stays open -> Stop flushes final words -> review form -> Save locally -> Export JSON to Files -> office transfer. No audio is saved or sent to a server. App hiding or phone interruptions stop capture. Android update checks explicitly open an external browser; normal logging/export needs no connection.

@@ -216,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="28"', 'name="app-version" content="29"').replace('Version 28', 'Version 29');
+      const future = html.replace('name="app-version" content="29"', 'name="app-version" content="30"').replace('Version 29', 'Version 30');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -225,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=29&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=30&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=29&reload=*');
+      await p.waitForURL('**/index.html?v=30&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -246,7 +246,7 @@ async function saveForm(page) {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await ctx.addInitScript(() => {
         window.recognizers = [];
-        window.SpeechRecognition = class {
+        window.OfflineSpeechRecognition = class {
           start() { window.recognizers.push(this); queueMicrotask(() => this.onstart?.()); }
           abort() { this.aborted = true; }
         };
@@ -310,7 +310,7 @@ async function saveForm(page) {
     });
     await check('Field microphone stops during startup and on permission error', async () => {
       const ctx = await browser.newContext();
-      await ctx.addInitScript(() => { window.SpeechRecognition = class { start() { window.testRecognition = this; } abort() {} }; });
+      await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.testRecognition = this; } abort() {} }; });
       const p = await ctx.newPage(); await p.goto(base);
       await p.locator('#contact-name').click();
       await p.locator('#stop-field-microphone').click();
@@ -324,7 +324,7 @@ async function saveForm(page) {
     });
     await check('Interim speech appears immediately, corrects without duplication and survives Stop', async () => {
       const ctx = await browser.newContext();
-      await ctx.addInitScript(() => { window.SpeechRecognition = class { start() { window.liveRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
+      await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.liveRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
       const p = await ctx.newPage(); await p.goto(base);
       await p.locator('#contact-name').click();
       assert.equal(await p.evaluate(() => liveRecognition.interimResults), true);
@@ -357,7 +357,7 @@ async function saveForm(page) {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => {
         window.starts = 0;
-        window.SpeechRecognition = class { start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); } abort() {} };
+        window.OfflineSpeechRecognition = class { start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); } abort() {} };
       });
       const p = await ctx.newPage(); await p.goto(base);
       await p.locator('#contact-name').click();
@@ -389,7 +389,7 @@ async function saveForm(page) {
     });
     await check('Revised final snapshots replace earlier text and preserve intentional note repetition', async () => {
       const ctx = await browser.newContext();
-      await ctx.addInitScript(() => { window.SpeechRecognition = class { start() { window.currentRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
+      await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.currentRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
       const p = await ctx.newPage(); await p.goto(base);
       await p.locator('#contact-name').click();
       await p.evaluate(() => {
@@ -411,7 +411,7 @@ async function saveForm(page) {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => {
         window.starts = 0;
-        window.SpeechRecognition = class {
+        window.OfflineSpeechRecognition = class {
           start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); }
           abort() {}
         };
@@ -460,6 +460,59 @@ async function saveForm(page) {
       assert.deepEqual(values, ['Discussed pricing and delivery. will be confirmed.', 'Very very important.',
         'Please repeat: send it now, send it now.', 'We discussed pricing. We discussed delivery.', 'Robert Connor']);
       await p.close();
+    });
+    await check('Offline bridge streams indexed phrases, preserves repeats, flushes Stop and ignores stale events', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => {
+        window.nativeStarts = []; window.nativeStops = [];
+        window.OfflineAndroid = {
+          start(id) { nativeStarts.push(id); queueMicrotask(() => receiveOfflineSpeech({ id, type: 'start' })); },
+          stop(id, finish) { nativeStops.push({ id, finish }); },
+          exportFile() {}, openUpdates() {}
+        };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.locator('#appointment-notes').click();
+      const emit = (text, final = false) => p.evaluate(({ text, final }) => {
+        receiveOfflineSpeech({ id: nativeStarts.at(-1), type: 'result', text, final });
+      }, { text, final });
+      await emit('Robert'); await emit('Robert Connor requested pricing', true);
+      await emit('Robert Connor requested pricing', true);
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Robert Connor requested pricing Robert Connor requested pricing');
+      await p.locator('#stop-field-microphone').click();
+      assert.equal(await p.evaluate(() => nativeStops.at(-1).finish), true);
+      await emit('Send the quote', true);
+      await p.evaluate(() => receiveOfflineSpeech({ id: nativeStarts.at(-1), type: 'end' }));
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Robert Connor requested pricing Robert Connor requested pricing Send the quote');
+      assert.equal(await p.evaluate(() => nativeStarts.length), 1);
+      await p.locator('#contact-name').click();
+      await p.evaluate(() => receiveOfflineSpeech({ id: nativeStarts[0], type: 'result', text: 'wrong field', final: true }));
+      await emit('Robert Connor', true);
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      await ctx.close();
+    });
+    await check('Offline native export and share use the file bridge, never browser cloud speech', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => {
+        window.exports = [];
+        window.OfflineAndroid = { start() {}, stop() {}, openUpdates() {}, exportFile(...args) { exports.push(args); } };
+        window.SpeechRecognition = class { constructor() { throw new Error('Cloud recognizer must never run'); } };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.evaluate(() => {
+        calls = [{ id: 'offline-test', contact_name: 'Test contact' }];
+        shareJsonExport(); downloadFile('test.json', getJsonExport(), 'application/json');
+      });
+      const exports = await p.evaluate(() => window.exports);
+      assert.equal(exports.length, 2);
+      assert.equal(exports[0][3], true); assert.equal(exports[1][3], false);
+      assert.equal(JSON.parse(exports[0][1])[0].contact_name, 'Test contact');
+      await ctx.close();
+      const browserPage = await browser.newPage(); await browserPage.goto(base);
+      assert.equal(await browserPage.locator('#dictate-on-tap').isDisabled(), true);
+      assert.match(await browserPage.locator('#voice-status').textContent(), /Offline dictation requires/);
+      await browserPage.close();
     });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));
