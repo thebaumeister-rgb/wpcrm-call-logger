@@ -1,4 +1,4 @@
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -398,7 +398,8 @@ function updateMileageVisibility() {
 }
 
 function getSpeechRecognition() {
-  return window.OfflineSpeechRecognition;
+  if (window.OfflineSpeechRecognition) return window.OfflineSpeechRecognition;
+  return document.querySelector('#online-speech')?.checked ? (window.SpeechRecognition || window.webkitSpeechRecognition) : undefined;
 }
 
 function hasDraft() {
@@ -513,7 +514,7 @@ document.querySelector("#check-update").addEventListener("click", async () => {
 document.querySelector("#reload-app").addEventListener("click", reloadAvailableUpdate);
 
 function showNetworkState() {
-  document.querySelector("#connection-status").textContent = window.OfflineAndroid ? "On-device speech" : (navigator.onLine ? "Online" : "Offline");
+  document.querySelector("#connection-status").textContent = document.querySelector('#online-speech')?.checked ? "Online speech selected" : window.OfflineAndroid ? "On-device speech" : "Browser mode";
 }
 window.addEventListener("online", showNetworkState);
 window.addEventListener("offline", showNetworkState);

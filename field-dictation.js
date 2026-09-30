@@ -3,6 +3,13 @@ const fieldMicrophone = document.querySelector("#field-microphone");
 const fieldMicrophoneStatus = document.querySelector("#field-microphone-status");
 const fieldTargets = new Set(["contact-name", "additional-contacts", "appointment-subject", "appointment-datetime", "appointment-end-datetime", "appointment-status", "mileage", "appointment-notes", "actions"]);
 let fieldSession = null;
+let onlineSpeechConsent = false;
+
+function confirmOnlineSpeech() {
+  if (onlineSpeechConsent) return true;
+  onlineSpeechConsent = confirm("Online recognition may send your voice to your phone's speech provider. It requires internet and may beep or stop after a pause. Enable online recognition?");
+  return onlineSpeechConsent;
+}
 
 try { fieldDictationToggle.checked = localStorage.getItem("wpcrm-dictate-on-tap") !== "false"; } catch { /* Optional preference. */ }
 if (!getSpeechRecognition()) { fieldDictationToggle.checked = false; fieldDictationToggle.disabled = true; }
@@ -134,6 +141,12 @@ function startFieldDictation(target) {
   if (fieldSession?.target === target) return;
   stopFieldDictation();
   const Recognition = getSpeechRecognition();
+  if (document.querySelector('#online-speech').checked && !confirmOnlineSpeech()) {
+    setVoiceStatus("Online dictation canceled. Uncheck Online voice recognition for on-device speech."); return;
+  }
+  if (!window.OfflineAndroid && document.querySelector('#online-speech').checked && !navigator.onLine) {
+    showToast("Online speech requires internet. Use the Android app for on-device speech."); return;
+  }
   if (!Recognition) { showToast("Field dictation is unavailable here. Use your keyboard microphone."); return; }
   const label = target.matches('[role="radiogroup"]') ? "Purpose" : document.querySelector(`label[for="${target.id}"]`)?.textContent || "Field";
   const isText = target.type === "text" || target.tagName === "TEXTAREA";
@@ -167,7 +180,7 @@ function startFieldDictation(target) {
       session.emptyRestarts = 0;
       const results = Array.from(event.results);
       const nameField = target.id === "contact-name";
-      const combine = recognition.offline ? parts => parts.filter(Boolean).join(" ") : parts => combineSpeechParts(parts, nameField);
+      const combine = recognition.native || recognition.offline ? parts => parts.filter(Boolean).join(" ") : parts => combineSpeechParts(parts, nameField);
       run.text = combine(results.map(result => result[0].transcript.trim()));
       const interim = results.filter(result => !result.isFinal).map(result => result[0].transcript).join(" ").trim();
       let errorMessage = "";
@@ -180,7 +193,7 @@ function startFieldDictation(target) {
         session.rendered = target.value;
       } else {
         const finalized = results.filter(result => result.isFinal);
-        const finalText = recognition.offline ? results.slice(event.resultIndex).filter(result => result.isFinal).at(-1)?.[0].transcript.trim() : combineSpeechParts(finalized.map(result => result[0].transcript.trim()), false);
+        const finalText = recognition.native || recognition.offline ? results.slice(event.resultIndex).filter(result => result.isFinal).at(-1)?.[0].transcript.trim() : combineSpeechParts(finalized.map(result => result[0].transcript.trim()), false);
         if (finalText) {
           try { writeFieldSpeech(target, finalText); }
           catch (error) { errorMessage = error.message; }
@@ -200,8 +213,8 @@ function startFieldDictation(target) {
     };
     recognition.onend = () => {
       if (!current()) return;
-      if (recognition.offline) {
-        stopFieldDictation(recognition.finishing ? "Microphone stopped. Your entry is kept." : "Microphone interrupted. Tap a field to resume.");
+      if (recognition.native || recognition.offline || document.querySelector('#online-speech').checked) {
+        stopFieldDictation(recognition.finishing ? "Microphone stopped. Your entry is kept." : "Speech service stopped. Your entry is kept. Tap a field to resume.");
         return;
       }
       runOpen = false;
@@ -221,6 +234,15 @@ function startFieldDictation(target) {
 fieldDictationToggle.addEventListener("change", () => {
   if (!fieldDictationToggle.checked) stopFieldDictation();
   try { localStorage.setItem("wpcrm-dictate-on-tap", String(fieldDictationToggle.checked)); } catch { showToast("Setting applies for this session only."); }
+});
+document.querySelector('#online-speech').addEventListener('change', event => {
+  stopFieldDictation();
+  const toggle = event.target;
+  if (toggle.checked && !confirmOnlineSpeech()) toggle.checked = false;
+  fieldDictationToggle.disabled = !getSpeechRecognition();
+  fieldDictationToggle.checked = !fieldDictationToggle.disabled;
+  showNetworkState();
+  setVoiceStatus(toggle.checked ? getSpeechRecognition() ? "Online recognition selected. Tap a field to speak." : "Online recognition is unavailable in this browser. Typing is available." : getSpeechRecognition() ? "On-device recognition selected. Tap a field to speak." : "On-device recognition requires the Android app. Typing is available.");
 });
 document.querySelector("#stop-field-microphone").addEventListener("click", () => {
   if (fieldSession?.recognition.finish) {

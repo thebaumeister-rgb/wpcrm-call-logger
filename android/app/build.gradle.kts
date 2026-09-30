@@ -10,8 +10,8 @@ android {
         applicationId = "com.wpcrm.calllogger.offline"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "30-offline-preview"
+        versionCode = 31
+        versionName = "31-offline-preview"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

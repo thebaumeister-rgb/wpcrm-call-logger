@@ -1,12 +1,16 @@
-/* Only the installed Android package exposes this bridge. There is no cloud fallback. */
+/* Only the installed Android package exposes this bridge. Online speech is explicit opt-in. */
 (() => {
   if (!window.OfflineAndroid) return;
   let nextId = 0;
   const sessions = new Map();
   window.receiveOfflineSpeech = message => sessions.get(message.id)?.receive(message);
   window.OfflineSpeechRecognition = class {
-    constructor() { this.offline = true; this.results = []; this.id = String(++nextId); }
-    start() { sessions.set(this.id, this); OfflineAndroid.start(this.id); }
+    constructor() { this.native = true; this.offline = !document.querySelector('#online-speech')?.checked; this.results = []; this.id = String(++nextId); }
+    start() {
+      sessions.set(this.id, this);
+      if (this.offline) OfflineAndroid.start(this.id);
+      else OfflineAndroid.startOnline(this.id);
+    }
     abort() { sessions.delete(this.id); OfflineAndroid.stop(this.id, false); }
     finish() { this.finishing = true; OfflineAndroid.stop(this.id, true); }
     receive(message) {
