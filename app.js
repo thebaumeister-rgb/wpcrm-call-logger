@@ -221,7 +221,7 @@ function createCallFromForm() {
   };
 }
 
-function resetForm() {
+function resetForm({ focusContact = true } = {}) {
   editingId = null;
   document.querySelector("#additional-contacts-field").hidden = false;
   document.querySelector("#save-call").textContent = "Save";
@@ -238,7 +238,7 @@ function resetForm() {
   appointmentEndDatetime.value = appointmentDatetime.value;
   appointmentStatus.value = "Completed";
   updateMileageVisibility();
-  contactName.focus();
+  if (focusContact) contactName.focus();
 }
 
 function setAppointmentType(value) {

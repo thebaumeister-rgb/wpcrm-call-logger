@@ -161,11 +161,11 @@ function applySpokenSummary(text, now = new Date()) {
 
 async function completeDictation() {
   if (hasDraft() && !confirm("Replace the current entry with a new dictated log?")) return;
-  resetForm();
+  resetForm({ focusContact: false });
   form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], textarea').forEach(field => { field.value = ""; });
   form.querySelectorAll('[name="appointmentType"]').forEach(field => { field.checked = false; });
   appointmentStatus.value = "";
-  document.querySelector("#dictation-guide").scrollIntoView({ behavior: "smooth", block: "center" });
+  showDictationGuide();
   let timeAnchor;
   const onTranscript = text => {
     if (!timeAnchor && /\btime\s*:?\s+now\b/i.test(text)) timeAnchor = new Date();
@@ -192,12 +192,17 @@ function updateDictationReview() {
 }
 form.addEventListener("input", updateDictationReview);
 form.addEventListener("change", updateDictationReview);
-document.querySelector("#dictate-details").onclick = () => {
-  if (voiceActive) { stopVoiceEntry(); return; }
+function showDictationGuide() {
   const guide = document.querySelector("#dictation-guide");
   guide.hidden = false;
+  document.activeElement?.blur();
   guide.focus({ preventScroll: true });
-  guide.scrollIntoView({ behavior: "smooth", block: "center" });
+  guide.scrollIntoView({ behavior: "instant", block: "start" });
+}
+
+document.querySelector("#dictate-details").onclick = () => {
+  if (voiceActive) { stopVoiceEntry(); return; }
+  showDictationGuide();
   runVoiceEntry("summary");
 };
 document.querySelector("#apply-summary").onclick = () => {
@@ -208,4 +213,3 @@ document.querySelector("#apply-summary").onclick = () => {
     else showToast("Fields filled. Review before saving.");
   } catch (error) { showToast(error.message); }
 };
-if (!getSpeechRecognition()) document.querySelector("#dictate-details").disabled = true;

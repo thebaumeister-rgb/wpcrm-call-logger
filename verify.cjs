@@ -289,8 +289,12 @@ async function saveForm(page) {
       await p.waitForFunction(() => acceptingVoiceAnswer);
       assert.equal(await p.locator('#dictation-guide').isVisible(), true);
       assert.equal(await p.locator('#dictation-guide li').count(), 7);
+      assert.equal(await p.evaluate(() => document.activeElement.id), 'dictation-guide');
+      const guideBox = await p.locator('#dictation-guide').boundingBox();
+      assert.ok(guideBox.y >= -1 && guideBox.y + guideBox.height <= 844, 'Guide must be inside the phone viewport after microphone startup');
       assert.deepEqual(await p.evaluate(() => window.spokenPrompts), []);
       await p.screenshot({ path: 'proof/dictation-guide.png', fullPage: true });
+      await p.screenshot({ path: 'proof/dictation-guide-viewport.png' });
       await p.evaluate(() => {
         const result = [{ transcript: 'Ignore this introduction. Name Robert Connor. Subject RV16 quote. Time now. Status Completed. Purpose call. Mileage zero. Notes Requested pricing. Save it.' }];
         result.isFinal = true;
