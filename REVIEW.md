@@ -1,4 +1,6 @@
-# Version 14 review and proof
+# Version 15 review and proof
+
+Multiple contacts now save atomically as separate records with unique IDs and a shared meeting group ID. Blank lines and repeated names are removed. The user confirms the recipients before saving. Mileage is counted only once; later edits are per record. A thirteenth automated check verifies draft recovery, cancellation, export structure, mileage and independent editing. This does not add contact-directory verification or automatic WPCRM upload.
 
 Reviewed 2026-09-29. Scope: static phone PWA and JSON handoff, not the legacy command-line tools or WPCRM itself.
 

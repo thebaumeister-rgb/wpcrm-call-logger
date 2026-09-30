@@ -8,6 +8,7 @@ let cancelMicrophoneStart = null;
 
 const form = document.querySelector("#call-form");
 const contactName = document.querySelector("#contact-name");
+const additionalContacts = document.querySelector("#additional-contacts");
 const appointmentSubject = document.querySelector("#appointment-subject");
 const appointmentDatetime = document.querySelector("#appointment-datetime");
 const appointmentNotes = document.querySelector("#appointment-notes");
@@ -65,6 +66,7 @@ function loadCalls() {
 function normalizeCall(call) {
   return {
     id: call.id || crypto.randomUUID(),
+    meeting_group_id: call.meeting_group_id || "",
     wpcrm_workflow: call.wpcrm_workflow || "contact_search_add_completed_appointment",
     contact_name: call.contact_name || "",
     appointment_subject: call.appointment_subject || call.meeting_point || "",
@@ -112,6 +114,7 @@ function validateCalls(rows) {
     for (const key of ["id", "contact_name", "appointment_subject", "appointment_datetime", "appointment_type", "appointment_notes", "actions", "timezone", "recorded_at", "meeting_point", "completed", "wpcrm_workflow"]) {
       if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
     }
+    if (row.meeting_group_id != null && typeof row.meeting_group_id !== "string") throw new Error("Invalid meeting group.");
     if (row.mileage != null && typeof row.mileage !== "string" && typeof row.mileage !== "number") throw new Error("Invalid mileage.");
     const call = normalizeCall(row);
     if (!call.contact_name.trim() || !call.appointment_subject.trim() || !call.appointment_notes.trim() || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(call.appointment_datetime) || Number.isNaN(Date.parse(call.appointment_datetime))) throw new Error("A call is missing required details or has an invalid date.");
@@ -185,6 +188,7 @@ function createCallFromForm() {
 
   return {
     id: editingId || crypto.randomUUID(),
+    meeting_group_id: calls.find((call) => call.id === editingId)?.meeting_group_id || "",
     wpcrm_workflow: "contact_search_add_completed_appointment",
     contact_name: data.get("contactName").trim(),
     appointment_subject: data.get("appointmentSubject").trim(),
@@ -201,6 +205,7 @@ function createCallFromForm() {
 
 function resetForm() {
   editingId = null;
+  document.querySelector("#additional-contacts-field").hidden = false;
   document.querySelector("#save-call").textContent = "Save call";
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* Form still works without draft storage. */ }
   form.reset();
@@ -225,12 +230,20 @@ function setAppointmentType(value) {
 function saveCurrentForm() {
   if (!form.reportValidity()) return false;
   const call = createCallFromForm();
-  try { validateCalls([call]); } catch (error) { showToast(error.message); return false; }
-  const next = editingId ? calls.map((item) => item.id === editingId ? call : item) : [call, ...calls];
+  const names = [...new Map([call.contact_name, ...(editingId ? [] : additionalContacts.value.split(/\r?\n/))]
+    .map((name) => name.trim()).filter(Boolean).map((name) => [name.toLocaleLowerCase(), name])).values()];
+  if (names.length > 50) { showToast("Limit each meeting to 50 contacts."); return false; }
+  const groupId = names.length > 1 ? crypto.randomUUID() : call.meeting_group_id;
+  const records = names.map((name, index) => ({ ...call, contact_name: name,
+    id: index === 0 ? call.id : crypto.randomUUID(), meeting_group_id: groupId,
+    mileage: index === 0 ? call.mileage : (call.mileage === "" ? "" : "0") }));
+  try { validateCalls(records); } catch (error) { showToast(error.message); return false; }
+  if (records.length > 1 && !confirm(`Save ${records.length} separate appointments with the same notes and actions?\n\n${names.join("\n")}\n\nMileage is recorded only on the first contact. Later edits apply to one appointment at a time.`)) return false;
+  const next = editingId ? calls.map((item) => item.id === editingId ? call : item) : [...records, ...calls];
   if (!saveCalls(next)) return false;
   renderCalls();
   resetForm();
-  showToast("Call saved");
+  showToast(records.length > 1 ? `${records.length} contact appointments saved` : "Call saved");
   return true;
 }
 
@@ -268,6 +281,7 @@ function toCsv(rows) {
     "recorded_at",
     "actions",
     "timezone",
+    "meeting_group_id",
   ];
   const header = fields.join(",");
   const body = rows.map((row) => fields.map((field) => csvEscape(row[field])).join(","));
@@ -322,8 +336,8 @@ function renderCalls() {
     item.querySelector(".edit-button").addEventListener("click", () => {
       if (voiceActive) return;
       if (hasDraft() && !confirm("Replace the current draft with this saved call?")) return;
-      fillForm(call);
       editingId = call.id;
+      fillForm(call);
       document.querySelector("#save-call").textContent = "Save changes";
       saveDraft();
       form.scrollIntoView({ behavior: "smooth" });
@@ -354,11 +368,13 @@ function getSpeechRecognition() {
 }
 
 function hasDraft() {
-  return Boolean(contactName.value || appointmentSubject.value || appointmentNotes.value || document.querySelector("#actions").value);
+  return Boolean(contactName.value || additionalContacts.value || appointmentSubject.value || appointmentNotes.value || document.querySelector("#actions").value);
 }
 
 function fillForm(call) {
   contactName.value = call.contact_name || "";
+  additionalContacts.value = call.additional_contacts || "";
+  document.querySelector("#additional-contacts-field").hidden = Boolean(editingId);
   appointmentSubject.value = call.appointment_subject || "";
   appointmentDatetime.value = call.appointment_datetime || nowForInput();
   appointmentNotes.value = call.appointment_notes || "";
@@ -369,7 +385,7 @@ function fillForm(call) {
 
 function saveDraft() {
   try {
-    if (hasDraft()) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: createCallFromForm(), editingId }));
+    if (hasDraft()) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: { ...createCallFromForm(), additional_contacts: additionalContacts.value }, editingId }));
     else localStorage.removeItem(DRAFT_KEY);
   } catch { showToast("Draft could not be backed up on this device."); }
 }

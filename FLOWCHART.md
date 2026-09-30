@@ -4,7 +4,7 @@
 flowchart TD
     A[Install from HTTPS website] --> B[Open phone app]
     B --> C{Type or voice?}
-    C --> D[Enter contact, subject, type, date/time and notes]
+    C --> D[Enter contact, optional additional contacts, subject, type, date/time and notes]
     C --> E[Answer spoken questions]
     E --> D
     D --> F{Meeting?}
