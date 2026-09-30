@@ -1,4 +1,6 @@
-# WPCRM Call Logger - Version 26
+# WPCRM Call Logger - Version 27
+
+Pauses no longer end the field session: normal recognizer endings and no-speech events resume automatically while the app is visible. The Stop button remains available, and there is no five-minute app cutoff. Stop cancels pending restarts. Saving, switching fields, disabling dictation, typing, leaving the app, permission errors and other fatal microphone errors still end or switch listening. Android may beep when its speech service restarts. Recognition snapshots replace earlier text instead of repeatedly appending first words; cumulative contact-name expansions are merged while intentional repetition in notes is preserved. The suite now has 21 checks.
 
 Text fields now show provisional words as the recognizer supplies them and replace those words with corrections, rather than appending duplicates. Stop keeps the currently visible text for review. For dates, mileage and choices, provisional speech appears in the microphone panel and the field is updated after recognition finalizes a valid value. Recognition speed depends on the phone/browser and connection. The suite now includes 19 checks.
 
@@ -21,7 +23,7 @@ Dictate on field tap is enabled by default:
 4. Tap Stop to stop listening, or tap another field to move dictation there.
 5. Review the fields, make corrections, and press Save.
 
-The spoken-summary box, guide, Dictate Details and Start voice buttons have been removed. No spoken completion command is needed. Stop never saves or clears the call. Scrolling alone does not start the microphone. The microphone stops on errors, when the app is hidden, after five minutes, or when you leave the entry controls. It does not automatically restart after an error; tap a field to retry.
+The spoken-summary box, guide, Dictate Details and Start voice buttons have been removed. No spoken completion command is needed. Stop never saves or clears the call. Scrolling alone does not start or stop the microphone. Silence resumes automatically; permission/network errors and app hiding stop it, requiring a field tap to retry.
 
 Turn Dictate on field tap off for normal typing or keyboard dictation. The preference is stored locally. Text is inserted at the cursor or replaces selected text; select existing words to replace them. Wait for recognized words to appear before tapping Stop.
 

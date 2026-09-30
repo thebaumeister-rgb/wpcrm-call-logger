@@ -10,7 +10,7 @@ function stopFieldDictation(message = "Microphone stopped. Your entry is kept.")
   const session = fieldSession;
   fieldSession = null;
   if (session) {
-    clearTimeout(session.startTimer); clearTimeout(session.limitTimer);
+    clearTimeout(session.startTimer); clearTimeout(session.restartTimer);
     session.recognition.onstart = session.recognition.onresult = session.recognition.onerror = session.recognition.onend = null;
     try { session.recognition.abort(); } catch { /* Already stopped. */ }
     setVoiceStatus(message);
@@ -67,57 +67,95 @@ function writeFieldSpeech(target, text) {
   saveDraft(); showContactMatch();
 }
 
+function combineSpeechParts(parts, contactNameField) {
+  return parts.filter(Boolean).reduce((combined, part) => {
+    const value = part.trim();
+    // Some recognizers expand a short name in the following result instead of revising its index.
+    if (contactNameField && combined && value.toLowerCase().startsWith(combined.toLowerCase() + " ")) return value;
+    return combined ? combined + " " + value : value;
+  }, "");
+}
+
 function startFieldDictation(target) {
   if (fieldSession?.target === target) return;
   stopFieldDictation();
   const Recognition = getSpeechRecognition();
   if (!Recognition) { showToast("Field dictation is unavailable here. Use your keyboard microphone."); return; }
-  const recognition = new Recognition();
-  recognition.lang = "en-US"; recognition.continuous = true; recognition.interimResults = true;
   const label = target.matches('[role="radiogroup"]') ? "Purpose" : document.querySelector(`label[for="${target.id}"]`)?.textContent || "Field";
-  const session = { recognition, target, startTimer: null, limitTimer: null, finalized: new Set(), preview: null };
+  const isText = target.type === "text" || target.tagName === "TEXTAREA";
+  const session = { recognition: null, target, startTimer: null, restartTimer: null, runs: [],
+    original: isText ? target.value : "", start: target.selectionStart, end: target.selectionEnd,
+    rendered: isText ? target.value : "", emptyRestarts: 0 };
   fieldSession = session;
   fieldMicrophone.hidden = false;
   document.body.classList.add("field-mic-active");
-  fieldMicrophoneStatus.textContent = `Starting microphone: ${label}`;
   positionFieldMicrophone();
-  recognition.onstart = () => {
-    if (fieldSession !== session) return;
-    clearTimeout(session.startTimer);
-    fieldMicrophoneStatus.textContent = `Listening: ${label}`;
-    setVoiceStatus(`Listening: ${label}`);
-  };
-  recognition.onresult = event => {
-    if (fieldSession !== session) return;
-    // Replace only the provisional insertion, leaving earlier final text intact.
-    if (session.preview) {
-      if (target.value !== session.preview.rendered) { stopFieldDictation("Entry edited. Tap the field to resume dictation."); return; }
-      target.value = session.preview.value;
-      target.setSelectionRange(session.preview.start, session.preview.end);
-      session.preview = null;
-    }
-    let errorMessage = "";
-    for (let i = 0; i < event.results.length; i++) {
-      if (!event.results[i].isFinal || session.finalized.has(i)) continue;
-      session.finalized.add(i);
-      try { writeFieldSpeech(target, event.results[i][0].transcript); }
-      catch (error) { errorMessage = error.message; }
-    }
-    const interim = Array.from(event.results).filter(result => !result.isFinal).map(result => result[0].transcript).join(" ").trim();
-    if (interim && (target.type === "text" || target.tagName === "TEXTAREA")) {
-      const preview = { value: target.value, start: target.selectionStart, end: target.selectionEnd };
-      writeFieldSpeech(target, interim);
-      preview.rendered = target.value;
-      session.preview = preview;
-    }
-    fieldMicrophoneStatus.textContent = errorMessage || (interim ? `Hearing: ${interim}` : `Listening: ${label}`);
-    saveDraft(); showContactMatch();
-  };
-  recognition.onerror = event => { if (fieldSession === session) { const message = event.error === "not-allowed" ? "Microphone permission denied. Your entry is unchanged." : `Microphone error: ${event.error}. Tap a field to try again.`; stopFieldDictation(message); showToast(message); } };
-  recognition.onend = () => { if (fieldSession === session) stopFieldDictation("Microphone ended. Tap a field to listen again."); };
-  session.startTimer = setTimeout(() => { if (fieldSession === session) stopFieldDictation("Microphone did not start. Tap a field to retry."); }, 10000);
-  session.limitTimer = setTimeout(() => { if (fieldSession === session) stopFieldDictation("Five-minute listening limit reached. Your entry is kept."); }, 300000);
-  try { recognition.start(); } catch { stopFieldDictation("Microphone could not start. Tap a field to retry."); }
+
+  function beginListening() {
+    if (fieldSession !== session || document.hidden) return;
+    const recognition = new Recognition();
+    const run = { text: "" };
+    session.runs.push(run);
+    session.recognition = recognition;
+    recognition.lang = "en-US"; recognition.continuous = true; recognition.interimResults = true;
+    let runOpen = true;
+    const current = () => runOpen && fieldSession === session && session.recognition === recognition;
+    fieldMicrophoneStatus.textContent = `Starting microphone: ${label}`;
+    recognition.onstart = () => {
+      if (!current()) return;
+      clearTimeout(session.startTimer);
+      fieldMicrophoneStatus.textContent = `Listening: ${label}`;
+      setVoiceStatus(`Listening: ${label}`);
+    };
+    recognition.onresult = event => {
+      if (!current()) return;
+      if (isText && target.value !== session.rendered) { stopFieldDictation("Entry edited. Tap the field to resume dictation."); return; }
+      session.emptyRestarts = 0;
+      const results = Array.from(event.results);
+      const nameField = target.id === "contact-name";
+      run.text = combineSpeechParts(results.map(result => result[0].transcript.trim()), nameField);
+      const interim = results.filter(result => !result.isFinal).map(result => result[0].transcript).join(" ").trim();
+      let errorMessage = "";
+      if (isText) {
+        // Rebuild this session's insertion from the recognition snapshot, never append a preview twice.
+        target.value = session.original;
+        target.setSelectionRange(session.start, session.end);
+        const text = combineSpeechParts(session.runs.map(item => item.text), nameField);
+        if (text) writeFieldSpeech(target, text);
+        session.rendered = target.value;
+      } else {
+        const finalText = combineSpeechParts(results.filter(result => result.isFinal).map(result => result[0].transcript.trim()), false);
+        if (finalText) {
+          try { writeFieldSpeech(target, finalText); }
+          catch (error) { errorMessage = error.message; }
+        }
+      }
+      fieldMicrophoneStatus.textContent = errorMessage || (interim ? `Hearing: ${interim}` : `Listening: ${label}`);
+      saveDraft(); showContactMatch();
+    };
+    recognition.onerror = event => {
+      if (!current()) return;
+      if (event.error === "no-speech") {
+        fieldMicrophoneStatus.textContent = `Still listening: ${label}`;
+        return; // Android often ends recognition after silence; onend resumes it.
+      }
+      const message = event.error === "not-allowed" ? "Microphone permission denied. Your entry is kept." : `Microphone error: ${event.error}. Tap a field to try again.`;
+      stopFieldDictation(message); showToast(message);
+    };
+    recognition.onend = () => {
+      if (!current()) return;
+      runOpen = false;
+      clearTimeout(session.startTimer);
+      recognition.onstart = recognition.onresult = recognition.onerror = recognition.onend = null;
+      if (!run.text) session.runs.pop();
+      const delay = run.text ? 200 : Math.min(3000, 300 * ++session.emptyRestarts);
+      fieldMicrophoneStatus.textContent = `Resuming microphone: ${label}`;
+      session.restartTimer = setTimeout(beginListening, delay);
+    };
+    session.startTimer = setTimeout(() => { if (current()) stopFieldDictation("Microphone did not start. Tap a field to retry."); }, 10000);
+    try { recognition.start(); } catch { stopFieldDictation("Microphone could not start. Tap a field to retry."); }
+  }
+  beginListening();
 }
 
 fieldDictationToggle.addEventListener("change", () => {
@@ -126,7 +164,7 @@ fieldDictationToggle.addEventListener("change", () => {
 });
 document.querySelector("#stop-field-microphone").addEventListener("click", () => stopFieldDictation());
 document.addEventListener("pointerdown", event => {
-  if (fieldSession && !fieldFromTarget(event.target) && !fieldMicrophone.contains(event.target)) stopFieldDictation();
+  if (fieldSession && event.target.closest("button, a") && !fieldFromTarget(event.target) && !fieldMicrophone.contains(event.target)) stopFieldDictation();
 }, true);
 form.addEventListener("click", event => {
   if (!fieldDictationToggle.checked) return;

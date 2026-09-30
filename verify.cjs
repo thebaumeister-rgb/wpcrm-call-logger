@@ -216,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="26"', 'name="app-version" content="27"').replace('Version 26', 'Version 27');
+      const future = html.replace('name="app-version" content="27"', 'name="app-version" content="28"').replace('Version 27', 'Version 28');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -225,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=27&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=28&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=27&reload=*');
+      await p.waitForURL('**/index.html?v=28&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -351,6 +351,60 @@ async function saveForm(page) {
       assert.match(await p.locator('#field-microphone-status').textContent(), /twenty/);
       await emit([['twenty', true]]);
       assert.equal(await p.locator('#mileage').inputValue(), '20');
+      await ctx.close();
+    });
+    await check('Silence resumes listening, cumulative names do not repeat, and Stop cancels restarts', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => {
+        window.starts = 0;
+        window.SpeechRecognition = class { start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); } abort() {} };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.locator('#contact-name').click();
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Robert' }]; result.isFinal = true;
+        currentRecognition.onresult({ resultIndex: 0, results: [result] });
+        const full = [{ transcript: 'Robert Connor' }]; full.isFinal = true;
+        currentRecognition.onresult({ resultIndex: 1, results: [result, full] });
+        window.staleResult = currentRecognition.onresult;
+        currentRecognition.onerror({ error: 'no-speech' }); currentRecognition.onend();
+      });
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      assert.equal(await p.locator('#field-microphone').isVisible(), true);
+      await p.waitForFunction(() => window.starts === 2);
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Wrong old result' }]; result.isFinal = true;
+        staleResult({ resultIndex: 0, results: [result] });
+        currentRecognition.onerror({ error: 'no-speech' }); currentRecognition.onend();
+      });
+      await p.waitForFunction(() => window.starts === 3);
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      await p.evaluate(() => currentRecognition.onend());
+      await p.locator('#stop-field-microphone').click();
+      await p.waitForTimeout(1000);
+      assert.equal(await p.evaluate(() => window.starts), 3);
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
+      assert.equal(await p.locator('.call-card').count(), 0);
+      await ctx.close();
+    });
+    await check('Revised final snapshots replace earlier text and preserve intentional note repetition', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => { window.SpeechRecognition = class { start() { window.currentRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.locator('#contact-name').click();
+      await p.evaluate(() => {
+        for (const text of ['Robert', 'Robert Connor', 'Robert Connor']) {
+          const result = [{ transcript: text }]; result.isFinal = true;
+          currentRecognition.onresult({ resultIndex: 0, results: [result] });
+        }
+      });
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      await p.locator('#appointment-notes').click();
+      await p.evaluate(() => {
+        const results = ['Very', 'very important'].map(text => { const result = [{ transcript: text }]; result.isFinal = true; return result; });
+        currentRecognition.onresult({ resultIndex: 0, results });
+      });
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Very very important');
       await ctx.close();
     });
     assert.deepEqual(errors, []);
