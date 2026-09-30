@@ -1,4 +1,20 @@
-# WPCRM Call Logger
+# WPCRM Call Logger - Version 14
+
+## Install Tonight
+
+Open https://thebaumeister-rgb.github.io/wpcrm-call-logger/ on your phone.
+
+- iPhone: Safari > Share > Add to Home Screen.
+- Android: Chrome > menu > Install app or Add to Home screen.
+- Open Call Logger and check that it says Version 14.
+
+No ZIP download, GitHub account, office computer, or office Wi-Fi is needed. Initially load while online. Manual entry works offline after the offline cache is ready; voice may require internet. Try voice while parked.
+
+See [START-HERE.html](START-HERE.html) for the coworker guide, [FLOWCHART.md](FLOWCHART.md) for the workflow, and [REVIEW.md](REVIEW.md) for fixes and proof limitations.
+
+Version 14 adds editing, draft recovery, optional actions, JSON backup import, storage protection, installation/update controls, and bounded microphone recovery. Import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 12-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
+
+Records are stored in this browser on this device, not GitHub or WPCRM. Clearing browser data can remove them. Export backups regularly. Sharing does not prove the file reached OneDrive: check the destination. Exporting does not mark records as entered in WPCRM. Check previously processed entries to avoid duplicates. No Entra registration is needed.
 
 A mobile-friendly app for recording WPCRM appointment details before entering them into WPCRM at the end of the day.
 
@@ -12,7 +28,7 @@ A mobile-friendly app for recording WPCRM appointment details before entering th
 - Prompts for mileage only when the type is `Decision-Maker Meeting`
 - Captures appointment notes
 - Saves entries locally on the phone
-- Supports voice-guided entry for driving-style use after tapping Start voice
+- Supports voice-guided entry after tapping Start voice; test while parked
 - Exports saved calls as CSV or JSON
 - Shares the JSON file through the phone share sheet for saving to OneDrive, email, or another app
 - Copies the latest call as formatted text for WPCRM entry
@@ -47,7 +63,7 @@ Recommended end-of-day workflow:
 
 1. Tap `Share JSON`.
 2. Choose the OneDrive app, email, or another available share target.
-3. Save the timestamped file, for example `wpcrm-sales-calls-2026-06-05-1643.json`.
+3. Save the timestamped file, for example `wpcrm-sales-calls-2026-09-29-17-30-00-123.json`.
 4. Put it in a `WPCRMCalls` folder if OneDrive offers folder selection.
 5. On the office PC, use the synced file for the WPCRM upload workflow.
 
@@ -59,7 +75,7 @@ The saved records are structured for this later workflow:
 
 1. Go to the WPCRM Contact page.
 2. Search for the saved contact name.
-3. Select the matching contact.
+3. Select the exact matching contact. Stop and ask when no exact match is available.
 4. Click Add New Appointment.
 5. Enter appointment subject.
 6. Enter the saved date and time.
@@ -67,7 +83,7 @@ The saved records are structured for this later workflow:
 8. Choose the saved appointment type.
 9. Enter mileage if it is an in-person decision-maker meeting.
 10. Enter appointment notes.
-11. Click OK.
+11. Click OK and verify the saved appointment. This is a separate supervised workflow, not an automatic phone upload.
 
 ## Run Locally
 
@@ -96,7 +112,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://192.168.1.15:8081/index.html?v=13
+http://YOUR-COMPUTER-IP:8081/index.html?v=14
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.
@@ -127,6 +143,8 @@ On Android:
 - Tap Add to Home screen or Install app
 
 ## Files
+
+For the coworker package, `node serve.cjs 8081` starts a local preview at `http://127.0.0.1:8081`. With Playwright installed and Microsoft Edge available, `node verify.cjs` runs isolated sample-data tests against that server and generates `proof/`. Run `package.ps1` after testing to build the ZIP using an explicit file list excluding customer files and Git history.
 
 - `index.html` - app screen
 - `styles.css` - mobile layout

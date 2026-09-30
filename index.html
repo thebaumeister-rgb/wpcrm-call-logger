@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=13">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.webmanifest?v=14">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=14">
   </head>
   <body>
     <main class="app-shell">
@@ -24,11 +24,13 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
+      <div class="app-status"><span>Version 14</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
         <div>
           <h2>Voice entry</h2>
-          <p id="voice-status">Tap Start and answer each question out loud.</p>
+          <p id="voice-status" role="status" aria-live="polite">Ready</p>
         </div>
         <button class="voice-button" id="start-voice" type="button">Start voice</button>
       </section>
@@ -72,10 +74,14 @@
           <label for="appointment-notes">Appointment notes</label>
           <textarea id="appointment-notes" name="appointmentNotes" rows="6" required placeholder="Robert called to have an RV16-26A quoted..."></textarea>
         </section>
+        <section class="field-block">
+          <label for="actions">Actions / to-do items (optional)</label>
+          <textarea id="actions" name="actions" rows="2"></textarea>
+        </section>
 
         <input type="hidden" name="completed" value="Yes">
 
-        <button class="primary-button" type="submit">Save WPCRM entry</button>
+        <button class="primary-button" id="save-call" type="submit">Save call</button>
       </form>
 
       <section class="toolbar" aria-label="Saved call tools">
@@ -83,7 +89,10 @@
         <button type="button" id="export-csv">Export CSV</button>
         <button type="button" id="export-json">Export JSON</button>
         <button type="button" id="share-json">Share JSON</button>
+        <button type="button" id="import-json">Import JSON</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
       </section>
+      <footer class="toolbar"><button type="button" id="install-app" hidden>Install app</button><button type="button" id="check-update">Check for updates</button><button type="button" id="reload-app" hidden>Reload update</button></footer>
 
       <section class="history-section">
         <div class="section-heading">
@@ -97,6 +106,6 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="app.js?v=13" defer></script>
+    <script src="app.js?v=14" defer></script>
   </body>
 </html>

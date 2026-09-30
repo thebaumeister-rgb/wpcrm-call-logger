@@ -70,7 +70,7 @@ button {
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -81,7 +81,7 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(1.8rem, 8vw, 2.55rem);
+  font-size: 2rem;
   line-height: 1;
 }
 
@@ -111,11 +111,8 @@ h2 {
   gap: 12px;
   align-items: center;
   margin-bottom: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 14px;
-  box-shadow: 0 8px 22px rgba(31, 61, 54, 0.08);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
 }
 
 .voice-panel p {
@@ -139,11 +136,7 @@ h2 {
 .entry-form {
   display: grid;
   gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  padding: 16px 0;
 }
 
 .field-block {
@@ -236,7 +229,7 @@ textarea:focus {
 
 .toolbar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
   margin: 14px 0 18px;
 }
@@ -366,9 +359,23 @@ textarea:focus {
   }
 
   .entry-form {
-    padding: 20px;
+    padding: 20px 0;
   }
 }
+
+.app-status { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 0.85rem; }
+.app-status a { margin-left: auto; color: var(--accent-dark); }
+.record-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.edit-button { background: #e5edf8; color: #224d80; border-radius: 6px; padding: 0 12px; }
+button:disabled { opacity: 0.6; cursor: default; }
+button:focus-visible, a:focus-visible, .segmented-control input:focus-visible + span { outline: 3px solid #245ea8; outline-offset: 3px; }
+.field-block, .call-card header > div { min-width: 0; }
+.call-card, .app-status, #storage-warning { overflow-wrap: anywhere; }
+#storage-warning { padding: 14px; margin: 12px 0; background: #fff0de; color: #793000; }
+.guide { line-height: 1.6; }
+.guide img { width: 96px; height: 96px; }
+.guide h2 { margin-top: 24px; }
+.guide a { color: var(--accent-dark); }
 
 @media (max-width: 420px) {
   .voice-panel {

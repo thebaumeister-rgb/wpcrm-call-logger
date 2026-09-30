@@ -1,10 +1,13 @@
-const CACHE_NAME = "wpcrm-call-logger-v13";
+const CACHE_NAME = "wpcrm-call-logger-v14";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=13",
-  "./app.js?v=13",
-  "./manifest.webmanifest?v=13",
+  "./styles.css?v=14",
+  "./app.js?v=14",
+  "./manifest.webmanifest?v=14",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./START-HERE.html",
   "./icon.svg",
 ];
 
@@ -18,14 +21,22 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(keys.filter((key) => key.startsWith("wpcrm-call-logger-") && key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request).catch(async () => {
+      const cache = await caches.open(CACHE_NAME);
+      return await cache.match(event.request, { ignoreSearch: true }) || await cache.match("./index.html");
+    }));
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
