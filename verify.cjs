@@ -288,7 +288,9 @@ async function saveForm(page) {
       await p.locator('#dictate-details').click();
       await p.waitForFunction(() => acceptingVoiceAnswer);
       assert.equal(await p.locator('#dictation-guide').isVisible(), true);
-      assert.equal(await p.locator('#dictation-guide li').count(), 7);
+      assert.equal(await p.locator('#dictation-guide li').count(), 8);
+      assert.match(await p.locator('#dictation-guide li').nth(0).textContent(), /^Name /);
+      assert.match(await p.locator('#dictation-guide li').nth(1).textContent(), /^Add name /);
       assert.equal(await p.evaluate(() => document.activeElement.id), 'dictation-guide');
       const guideBox = await p.locator('#dictation-guide').boundingBox();
       assert.ok(guideBox.y >= -1 && guideBox.y + guideBox.height <= 844, 'Guide must be inside the phone viewport after microphone startup');
@@ -330,7 +332,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="23"', 'name="app-version" content="24"').replace('Version 23', 'Version 24');
+      const future = html.replace('name="app-version" content="24"', 'name="app-version" content="25"').replace('Version 24', 'Version 25');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -339,10 +341,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=24&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=25&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=24&reload=*');
+      await p.waitForURL('**/index.html?v=25&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -355,6 +357,25 @@ async function saveForm(page) {
       await p.waitForFunction(() => document.querySelector('#update-status').textContent.includes('Could not check'));
       assert.equal(await p.locator('#check-update').isEnabled(), true);
       await ctx.close();
+    });
+    await check('Add name parses comma lists and repeated triggers into distinct matching records', async () => {
+      const p = await browser.newPage(); await p.goto(base);
+      await p.evaluate(() => applySpokenSummary('Name Alice Adams Add name Bob Brown, Carol Cole, alice adams Add name David Day Subject Shared quotation Time now minus three Status Open Purpose Meeting Mileage 12 Notes Same discussion for everyone.'));
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Alice Adams');
+      assert.equal(await p.locator('#additional-contacts').inputValue(), 'Bob Brown\nCarol Cole\nalice adams\nDavid Day');
+      p.once('dialog', dialog => dialog.accept());
+      await p.locator('#save-call').click();
+      const rows = await p.evaluate(() => JSON.parse(getJsonExport()));
+      assert.equal(rows.length, 4);
+      assert.equal(new Set(rows.map(row => row.id)).size, 4);
+      assert.equal(new Set(rows.map(row => row.meeting_group_id)).size, 1);
+      assert.ok(rows.every(row => row.appointment_subject === 'Shared quotation' && row.appointment_notes === 'Same discussion for everyone' && row.status === 'Open'));
+      assert.equal(new Set(rows.map(row => row.appointment_datetime)).size, 1);
+      assert.equal(new Set(rows.map(row => row.appointment_end_datetime)).size, 1);
+      assert.equal(rows.reduce((sum, row) => sum + Number(row.mileage), 0), 12);
+      assert.deepEqual(await p.evaluate(() => splitAdditionalContacts('Bob Brown, Carol Cole')), ['Bob Brown', 'Carol Cole']);
+      assert.deepEqual(await p.evaluate(() => splitAdditionalContacts('Robert Connor | Acme, Inc | 42')), ['Robert Connor | Acme, Inc | 42']);
+      await p.close();
     });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));

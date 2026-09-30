@@ -1,4 +1,4 @@
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -250,10 +250,14 @@ function setAppointmentType(value) {
   }
 }
 
+function splitAdditionalContacts(value) {
+  return value.split(/\r?\n/).flatMap(line => line.includes("|") ? [line] : line.split(/,|\s+comma\s+/i)).map(name => name.trim()).filter(Boolean);
+}
+
 function saveCurrentForm() {
   if (!form.reportValidity()) return false;
   const call = createCallFromForm();
-  const names = [...new Map([call.contact_name, ...(editingId ? [] : additionalContacts.value.split(/\r?\n/))]
+  const names = [...new Map([call.contact_name, ...(editingId ? [] : splitAdditionalContacts(additionalContacts.value))]
     .map((name) => name.trim()).filter(Boolean).map((name) => [name.toLocaleLowerCase(), name])).values()];
   if (names.length > 50) { showToast("Limit each meeting to 50 contacts."); return false; }
   const groupId = names.length > 1 ? crypto.randomUUID() : call.meeting_group_id;

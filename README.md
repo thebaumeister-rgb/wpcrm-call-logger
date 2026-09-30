@@ -1,4 +1,6 @@
-# WPCRM Call Logger - Version 23
+# WPCRM Call Logger - Version 24
+
+The dictation guide now starts with Name, then optional Add name. Say "Name Robert Connor. Add name Paul Buck, Jane Smith. Subject Valve quotation..." Commas (or the spoken word comma) separate additional names; Add name may be repeated. Saving confirms the contact list and creates one record per unique contact with shared subject, times, status and notes. Mileage continues to count once per shared meeting. The additional-name form field also accepts commas. The current test suite has 20 checks.
 
 Check for updates now fetches the published version with cache bypass and compares it with the running code, including when a service worker has already activated. A newer version prompts for confirmation and reloads on approval. Cancel keeps the current entry. Reload clears unfinished fields only after the warning; saved calls and imported contacts remain. Offline, timeout and invalid server responses are reported instead of claiming the app is current. Release maintainers must update APP_VERSION, the app-version meta tag and asset/cache versions together; packaging checks the first two match.
 
@@ -20,7 +22,7 @@ Use **Import contacts** above the contact field. CSV accepts `Contact Name,Compa
 
 Select a suggested contact to retain its exact name, company and ID. Identical names with different companies/IDs require selection; unlisted names need explicit confirmation. Additional contact lines also accept the full suggestion text (`Name | Company | ID`).
 
-Use **Dictate details** to display the seven-field guide: Name, Subject, Time, Status, Purpose, Mileage, Notes. Say each field word followed by its value, in that order. Example: "Name Robert Connor and Paul Buck. Subject RV16 quote. Time now minus three. Status Completed. Purpose Call. Mileage zero. Notes Requested pricing. Call log complete."
+Use **Dictate details** to display the eight-field guide: Name, Add name, Subject, Time, Status, Purpose, Mileage, Notes. Say each field word followed by its value, in that order. Example: "Name Robert Connor. Add name Paul Buck, Jane Smith. Subject RV16 quote. Time now minus three. Status Completed. Purpose Call. Mileage zero. Notes Requested pricing. Call log complete."
 
 Name begins field capture; each next field word closes the previous field. Fields update as recognized speech arrives. After Notes, field words are ordinary text. Only **Call log complete** prepares review. Pauses, "save it", stopping, microphone errors and the five-minute safety limit do not finalize or save the log. Recognized draft content is retained in the form when listening stops. Missing or unrecognized values are flagged visually in review. Press **Save** to store the record after corrections.
 
@@ -36,13 +38,13 @@ Open https://thebaumeister-rgb.github.io/wpcrm-call-logger/ on your phone.
 
 - iPhone: Safari > Share > Add to Home Screen.
 - Android: Chrome > menu > Install app or Add to Home screen.
-- Open Call Logger and check that it says Version 23.
+- Open Call Logger and check that it says Version 24.
 
 No ZIP download, GitHub account, office computer, or office Wi-Fi is needed. Initially load while online. Manual entry works offline after the offline cache is ready; voice may require internet. Try voice while parked.
 
 See [START-HERE.html](START-HERE.html) for the coworker guide, [FLOWCHART.md](FLOWCHART.md) for the workflow, and [REVIEW.md](REVIEW.md) for fixes and proof limitations.
 
-Version 23 adds ordered live field capture, start/end time, status and the Call log complete review command. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 18-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
+Version 24 adds ordered live field capture, start/end time, status and the Call log complete review command. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 18-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
 
 Records are stored in this browser on this device, not GitHub or WPCRM. Clearing browser data can remove them. Export backups regularly. Sharing does not prove the file reached OneDrive: check the destination. Exporting does not mark records as entered in WPCRM. Check previously processed entries to avoid duplicates. No Entra registration is needed.
 
@@ -142,7 +144,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://YOUR-COMPUTER-IP:8081/index.html?v=23
+http://YOUR-COMPUTER-IP:8081/index.html?v=24
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

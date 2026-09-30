@@ -34,7 +34,7 @@ function matchesFor(name) {
 }
 
 function showContactMatch() {
-  const names = [contactName.value, ...additionalContacts.value.split(/\r?\n/)].filter(n => n.trim());
+  const names = [contactName.value, ...splitAdditionalContacts(additionalContacts.value)].filter(n => n.trim());
   document.querySelector("#contact-match").textContent = !directory.length ? "" : names.map(name => {
     const matches = matchesFor(name);
     return `${name}: ${matches.length === 1 ? "matched to imported list" : matches.length > 1 ? "multiple matches; select company / ID" : "not in imported list"}`;
@@ -122,25 +122,28 @@ function parseTimeRange(value, now = new Date()) {
 
 function applySpokenSummary(text, now = new Date()) {
   text = text.replace(/\bcall log complete[.!?\s]*$/i, "").trim();
-  const order = ["name", "subject", "time", "status", "purpose", "mileage", "notes"];
+  const order = ["name", "add name", "subject", "time", "status", "purpose", "mileage", "notes"];
   const markers = [];
   let last = -1;
-  for (const match of text.matchAll(/\b(name|subject|time|status|purpose|mileage|notes)\b\s*:?\s*/gi)) {
-    const index = order.indexOf(match[1].toLowerCase());
-    if ((last === -1 && index !== 0) || index <= last) continue;
+  for (const match of text.matchAll(/\b(add\s+name|name|subject|time|status|purpose|mileage|notes)\b\s*:?\s*/gi)) {
+    const index = order.indexOf(match[1].toLowerCase().replace(/\s+/g, " "));
+    if ((last === -1 && index !== 0) || index < last || (index === last && index !== 1)) continue;
     markers.push(match);
     last = index;
-    if (index === 6) break; // Everything after Notes is free text, including field words.
+    if (index === order.length - 1) break; // Everything after Notes is free text, including field words.
   }
   const found = {};
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];
-    found[marker[1].toLowerCase()] = text.slice(marker.index + marker[0].length, markers[i + 1]?.index ?? text.length).trim().replace(/[.;]+$/, "");
+    const key = marker[1].toLowerCase().replace(/\s+/g, " ");
+    const value = text.slice(marker.index + marker[0].length, markers[i + 1]?.index ?? text.length).trim().replace(/[.;]+$/, "");
+    found[key] = key === "add name" && found[key] ? `${found[key]}, ${value}` : value;
   }
   if (found.name !== undefined) {
-    const names = found.name.split(/\s+and\s+|;|\n/i).map(name => name.trim()).filter(Boolean);
+    const names = found.name.split(/\s+and\s+|\s+comma\s+|,|;|\n/i).map(name => name.trim()).filter(Boolean);
     contactName.value = names.shift() || "";
     additionalContacts.value = names.join("\n");
+    if (found["add name"]) additionalContacts.value = [...names, ...splitAdditionalContacts(found["add name"])].join("\n");
   }
   if (found.subject !== undefined) appointmentSubject.value = found.subject;
   if (found.time !== undefined) {

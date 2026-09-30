@@ -1,4 +1,6 @@
-# Version 23 review and proof
+# Version 24 review and proof
+
+Add name is now the second of eight guide items. Parser recognizes the full phrase before the shorter Name trigger, accepts comma-separated names and repeated Add name fields, and deduplicates at save. Contact-directory labels containing company commas remain intact in manual additional-name entry. Tests verify four separate contact IDs with identical appointment details and shared meeting ID, optional omission, duplicate suppression and unchanged one-trip mileage accounting (20 checks total).
 
 Update race fixed by comparing the published page metadata with the running APP_VERSION, not a transient installing/waiting worker reference. Cache-busted no-store checks have a 15-second timeout and persistent status. A simulated newer release tests confirmation cancellation, accepted navigation, blank startup and retained saved records, plus current/offline/server-error responses. The suite now has 19 checks. A page still running pre-fix code may require one manual refresh to receive this updater.
 
@@ -26,7 +28,7 @@ Reviewed 2026-09-29. Scope: static phone PWA and JSON handoff, not the legacy co
 - Medium: microphone startup and stopping during speech could hang. Startup is bounded; Stop settles pending operations and retains the form.
 - Medium: call type recognition could loop indefinitely and spoken dates could silently fall back. Invalid types stop after two answers; uncertain dates require correction.
 - Medium: dictated notes stopped at the first final recognition segment. Notes now accumulate segments with a silence window.
-- Medium: deletion was immediate. Delete is confirmed and saved calls can be edited. Automatic draft restoration was removed in Version 23 at the user's request for blank startup fields.
+- Medium: deletion was immediate. Delete is confirmed and saved calls can be edited. Automatic draft restoration was removed in Version 24 at the user's request for blank startup fields.
 - Medium: backups could not be restored in the app. Validated JSON import now merges by stable record ID.
 - Medium: minute-only filenames could collide. JSON and CSV names now include seconds and milliseconds.
 - Medium: offline navigation with a new query string could fail; cache cleanup affected unrelated caches. Navigation fallback now ignores query strings, and cleanup only targets this app's caches.

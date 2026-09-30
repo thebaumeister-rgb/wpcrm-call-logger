@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="app-version" content="23">
+    <meta name="app-version" content="24">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f68">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=23">
+    <link rel="manifest" href="manifest.webmanifest?v=24">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=23">
+    <link rel="stylesheet" href="styles.css?v=24">
   </head>
   <body>
     <main class="app-shell">
@@ -25,7 +25,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 23</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 24</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -44,7 +44,7 @@
           <section id="dictation-guide" hidden aria-label="Dictation guide" tabindex="-1">
             <h2>Dictation guide</h2>
             <p>This guide helps you follow a format while dictating.</p>
-            <ol><li>Name [Name(s) of the contact(s)]</li><li>Subject [Brief description of the call]</li><li>Time ["Now" sets start and end to the current time; "Now -3" sets start three hours ago and end now; or specific start and end date and time]</li><li>Status ["Open" or "Completed"]</li><li>Purpose ["Call" or "Meeting"]</li><li>Mileage ["123" or "0"]</li><li>Notes [Free notes]</li></ol>
+            <ol><li>Name [Name of the first contact]</li><li>Add name [Additional contact names separated by commas; optional]</li><li>Subject [Brief description of the call]</li><li>Time ["Now" sets start and end to the current time; "Now -3" sets start three hours ago and end now; or specific start and end date and time]</li><li>Status ["Open" or "Completed"]</li><li>Purpose ["Call" or "Meeting"]</li><li>Mileage ["123" or "0"]</li><li>Notes [Free notes]</li></ol>
             <p>Say "Call log complete" to prepare the review. Then press Save.</p>
           </section>
         </section>
@@ -61,7 +61,7 @@
         </section>
 
         <section class="field-block" id="additional-contacts-field">
-          <label for="additional-contacts">Additional contacts (one per line, optional)</label>
+          <label for="additional-contacts">Add name (comma-separated or one per line, optional)</label>
           <textarea id="additional-contacts" name="additionalContacts" rows="2"></textarea>
         </section>
 
@@ -137,7 +137,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=23" defer></script>
-    <script src="entry-tools.js?v=23" defer></script>
+    <script src="app.js?v=24" defer></script>
+    <script src="entry-tools.js?v=24" defer></script>
   </body>
 </html>
