@@ -1,4 +1,4 @@
-# WPCRM Call Logger - Version 20
+# WPCRM Call Logger - Version 21
 
 New launches and reloads start with all entry fields blank, including date/time and appointment type. Sample placeholders and automatic draft restoration are removed. Saved calls and the optional contact directory remain unchanged. Save an unfinished appointment before reloading if you want it in history. Voice entry can populate the current date/time after dictation begins. The current suite has 17 passing checks.
 
@@ -16,7 +16,13 @@ Use **Import contacts** above the contact field. CSV accepts `Contact Name,Compa
 
 Select a suggested contact to retain its exact name, company and ID. Identical names with different companies/IDs require selection; unlisted names need explicit confirmation. Additional contact lines also accept the full suggestion text (`Name | Company | ID`).
 
-Use **Dictate details** to display the on-screen guide. Say, for example: "Contact name Robert Connor. Appointment subject RV16 quote. Telephone call. Now. Appointment notes Requested pricing. Save it." The app collects speech until "save it" (or the 60-second limit), fills the fields, asks for missing required details, and prepares a formatted draft log for review. Press **Save call** to store the appointment; speech alone does not commit it in this mode. Say "Contacts Robert Connor and Paul Buck" for multiple contacts. Say "Date and time" followed by a specific date/time instead of "Now" when needed.
+Use **Dictate details** to display the seven-field guide: Name, Subject, Time, Status, Purpose, Mileage, Notes. Say each field word followed by its value, in that order. Example: "Name Robert Connor and Paul Buck. Subject RV16 quote. Time now minus three. Status Completed. Purpose Call. Mileage zero. Notes Requested pricing. Call log complete."
+
+Name begins field capture; each next field word closes the previous field. Fields update as recognized speech arrives. After Notes, field words are ordinary text. Only **Call log complete** prepares review. Pauses, "save it", stopping, microphone errors and the five-minute safety limit do not finalize or save the log. Recognized draft content is retained in the form when listening stops. Missing or unrecognized values are flagged visually in review. Press **Save** to store the record after corrections.
+
+Time "Now" sets both ends to the current time. "Now -3" or "Now minus three" sets the start three hours earlier and the end to now, anchored when Time Now is first recognized. Explicit ranges need both dates and times, for example "Time start September 29 2026 at 9:00 AM end September 29 2026 at 10:30 AM". Unsupported dates are left blank for correction. Status accepts Open or Completed; Purpose accepts Call or Meeting; mileage accepts numbers including 0.
+
+Exports retain `appointment_datetime` as the start and add `appointment_end_datetime` and `status`. `completed` is Yes for Completed and No for Open. **The WPCRM entry workflow must honor the exported status and both times; do not mark every record completed.** Legacy imports without end/status use their start as end and derive status from the old completed flag.
 
 This is label-based parsing, not unrestricted AI understanding. Unlabelled speech is kept as notes and missing fields are asked separately. Review everything before saving. For ordinary non-guided entry, type into any field or use the phone keyboard microphone. You can also dictate into Spoken summary with the keyboard, then tap **Fill fields**; missing required fields are highlighted. The original **Start voice** still asks every question in order.
 
@@ -26,13 +32,13 @@ Open https://thebaumeister-rgb.github.io/wpcrm-call-logger/ on your phone.
 
 - iPhone: Safari > Share > Add to Home Screen.
 - Android: Chrome > menu > Install app or Add to Home screen.
-- Open Call Logger and check that it says Version 20.
+- Open Call Logger and check that it says Version 21.
 
 No ZIP download, GitHub account, office computer, or office Wi-Fi is needed. Initially load while online. Manual entry works offline after the offline cache is ready; voice may require internet. Try voice while parked.
 
 See [START-HERE.html](START-HERE.html) for the coworker guide, [FLOWCHART.md](FLOWCHART.md) for the workflow, and [REVIEW.md](REVIEW.md) for fixes and proof limitations.
 
-Version 20 adds the visible dictation guide, "save it" draft preparation and a formatted review log. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 16-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
+Version 21 adds ordered live field capture, start/end time, status and the Call log complete review command. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 18-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
 
 Records are stored in this browser on this device, not GitHub or WPCRM. Clearing browser data can remove them. Export backups regularly. Sharing does not prove the file reached OneDrive: check the destination. Exporting does not mark records as entered in WPCRM. Check previously processed entries to avoid duplicates. No Entra registration is needed.
 
@@ -44,7 +50,7 @@ A mobile-friendly app for recording WPCRM appointment details before entering th
 - Prompts for appointment subject
 - Prompts for appointment type: `Decision-Maker Conference Call` or `Decision-Maker Meeting`
 - Defaults the date/time to the current date and time
-- Marks the appointment as completed in the saved record
+- Saves Open or Completed status
 - Prompts for mileage only when the type is `Decision-Maker Meeting`
 - Captures appointment notes
 - Saves entries locally on the phone
@@ -99,7 +105,7 @@ The saved records are structured for this later workflow:
 4. Click Add New Appointment.
 5. Enter appointment subject.
 6. Enter the saved date and time.
-7. Mark the appointment completed.
+7. Set the exported Open/Completed status and both start/end times. Older records without an end time use their start time for both.
 8. Choose the saved appointment type.
 9. Enter mileage if it is an in-person decision-maker meeting.
 10. Enter appointment notes.
@@ -132,7 +138,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://YOUR-COMPUTER-IP:8081/index.html?v=20
+http://YOUR-COMPUTER-IP:8081/index.html?v=21
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

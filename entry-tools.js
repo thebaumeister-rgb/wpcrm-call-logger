@@ -99,60 +99,83 @@ try { const raw = localStorage.getItem(CONTACTS_KEY); if (raw) directory = parse
 catch { showToast("Contact list could not be read. Reimport it; saved calls are unchanged."); }
 renderDirectory();
 
-function applySpokenSummary(text) {
-  text = text.replace(/\bsave it[.!?\s]*$/i, "").trim();
-  // Expand standalone guide answers only before notes, where they describe the appointment.
-  const notesAt = text.search(/\b(?:appointment notes|notes)\s*:?\s+/i);
-  const head = notesAt < 0 ? text : text.slice(0, notesAt);
-  text = head.replace(/(^|[.!?;]\s*)(meeting|telephone call|conference call)(?=[.!?;]|$)/gi, "$1Type $2")
-    .replace(/(^|[.!?;]\s*)now(?=[.!?;]|$)/gi, "$1Date now") + (notesAt < 0 ? "" : text.slice(notesAt));
-  // Explicit spoken labels keep uncertain details out of CRM fields.
-  const markers = [...text.matchAll(/(?:^|[.!?;]\s*|\s+)(additional contacts|contact names?|contacts?|appointment subject|subject|appointment type|type|date and time|date|mileage|appointment notes|notes|actions|to do items)\s*:?\s+/gi)];
+function localTimeValue(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function parseTimeRange(value, now = new Date()) {
+  const relative = value.match(/^now(?:\s*(?:-|minus)\s*(\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?:\s*hours?)?)?$/i);
+  if (relative) {
+    const hours = relative[1] ? Number(parseMileage(relative[1])) : 0;
+    if (!Number.isFinite(hours) || hours > 8760) return null;
+    return { start: localTimeValue(new Date(now.getTime() - hours * 3600000)), end: localTimeValue(now) };
+  }
+  const range = value.replace(/^start\s*:?\s*/i, "").split(/\s+(?:end\s*:?|to|until|through)\s*/i);
+  if (range.length !== 2) return null;
+  // Require dates on both ends rather than silently assigning today's date.
+  if (!range.every(part => /\d{4}/.test(part) && /\d\s*(?::\d{2}|a\.?m\.?|p\.?m\.?)/i.test(part))) return null;
+  const parse = part => parseSpokenDateTime(part.replace(/\bat\b/gi, " ").replace(/\b([ap])\.?m\.?/gi, "$1m").replace(/\b(\d{1,2})\s+(am|pm)\b/gi, "$1:00 $2").trim());
+  const start = parse(range[0]);
+  const end = parse(range[1]);
+  return start && end && new Date(end) >= new Date(start) ? { start, end } : null;
+}
+
+function applySpokenSummary(text, now = new Date()) {
+  text = text.replace(/\bcall log complete[.!?\s]*$/i, "").trim();
+  const order = ["name", "subject", "time", "status", "purpose", "mileage", "notes"];
+  const markers = [];
+  let last = -1;
+  for (const match of text.matchAll(/\b(name|subject|time|status|purpose|mileage|notes)\b\s*:?\s*/gi)) {
+    const index = order.indexOf(match[1].toLowerCase());
+    if ((last === -1 && index !== 0) || index <= last) continue;
+    markers.push(match);
+    last = index;
+    if (index === 6) break; // Everything after Notes is free text, including field words.
+  }
   const found = {};
   for (let i = 0; i < markers.length; i++) {
     const marker = markers[i];
-    const value = text.slice(marker.index + marker[0].length, markers[i + 1]?.index ?? text.length).trim().replace(/[.;]+$/, "");
-    const key = marker[1].toLowerCase();
-    if (/contact/.test(key)) found[/additional/.test(key) ? "additional" : "contact"] = value;
-    else if (/subject/.test(key)) found.subject = value;
-    else if (/type/.test(key)) found.type = parseAppointmentType(value);
-    else if (/date/.test(key)) { found.date = /^(now|current|today)$/i.test(value) ? nowForInput() : parseSpokenDateTime(value); if (!found.date) throw new Error("Date not understood. Enter date and time manually."); }
-    else if (/mileage/.test(key)) found.mileage = parseMileage(value);
-    else if (/notes/.test(key)) found.notes = value;
-    else found.actions = value;
+    found[marker[1].toLowerCase()] = text.slice(marker.index + marker[0].length, markers[i + 1]?.index ?? text.length).trim().replace(/[.;]+$/, "");
   }
-  if (found.contact) { const names = found.contact.split(/\s+and\s+|;/i); contactName.value = names.shift(); if (names.length) additionalContacts.value = names.join("\n"); }
-  if (found.additional) additionalContacts.value = found.additional.split(/\s+and\s+|;/i).join("\n");
-  if (found.subject) appointmentSubject.value = found.subject;
-  if (found.type) setAppointmentType(found.type);
-  if (found.date) appointmentDatetime.value = found.date;
-  if (found.mileage != null) mileage.value = found.mileage;
-  if (found.notes) appointmentNotes.value = found.notes;
-  else if (!markers.length && text.trim()) appointmentNotes.value = text.trim();
-  if (found.actions) document.querySelector("#actions").value = found.actions;
-  saveDraft(); showContactMatch();
+  if (found.name !== undefined) {
+    const names = found.name.split(/\s+and\s+|;|\n/i).map(name => name.trim()).filter(Boolean);
+    contactName.value = names.shift() || "";
+    additionalContacts.value = names.join("\n");
+  }
+  if (found.subject !== undefined) appointmentSubject.value = found.subject;
+  if (found.time !== undefined) {
+    const range = parseTimeRange(found.time, now);
+    appointmentDatetime.value = range?.start || "";
+    appointmentEndDatetime.value = range?.end || "";
+  }
+  if (found.status !== undefined) appointmentStatus.value = /^open$/i.test(found.status) ? "Open" : /^completed$/i.test(found.status) ? "Completed" : "";
+  if (found.purpose !== undefined) {
+    form.querySelectorAll('[name="appointmentType"]').forEach(field => { field.checked = false; });
+    if (/^(call|telephone call|conference call|meeting)$/i.test(found.purpose)) setAppointmentType(parseAppointmentType(found.purpose));
+  }
+  if (found.mileage !== undefined) mileage.value = /^\d+(\.\d+)?$/.test(found.mileage) ? found.mileage : /^(zero|one|two|three|four|five|six|seven|eight|nine|ten)$/i.test(found.mileage) ? parseMileage(found.mileage) : "";
+  if (found.notes !== undefined) appointmentNotes.value = found.notes;
+  saveDraft(); showContactMatch(); updateDictationReview();
   return found;
 }
 
 async function completeDictation() {
-  const text = await askOutLoud("Follow the guide on screen. Say save it when finished.", { collect: true, finishOnSave: true, silent: true });
-  summaryField.value = text;
-  const found = applySpokenSummary(text);
-  if (!appointmentDatetime.value) appointmentDatetime.value = nowForInput();
-  if (!contactName.value.trim()) contactName.value = await askOutLoud("Contact name?");
-  if (!appointmentSubject.value.trim()) appointmentSubject.value = await askOutLoud("Appointment subject?");
-  if (!found.type) {
-    const type = parseAppointmentType(await askOutLoud("Was this a call or meeting?"));
-    if (!type) throw new Error("Choose call or meeting before saving.");
-    setAppointmentType(type);
-  }
-  if (new FormData(form).get("appointmentType") === "Decision-Maker Meeting" && !mileage.value) mileage.value = parseMileage(await askOutLoud("What was the mileage?"));
-  if (!appointmentNotes.value.trim()) appointmentNotes.value = await askOutLoud("Appointment notes?", { collect: true });
-  showContactMatch();
-  saveDraft();
+  if (hasDraft() && !confirm("Replace the current entry with a new dictated log?")) return;
+  resetForm();
+  form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], textarea').forEach(field => { field.value = ""; });
+  form.querySelectorAll('[name="appointmentType"]').forEach(field => { field.checked = false; });
+  appointmentStatus.value = "";
+  document.querySelector("#dictation-guide").scrollIntoView({ behavior: "smooth", block: "center" });
+  let timeAnchor;
+  const onTranscript = text => {
+    if (!timeAnchor && /\btime\s*:?\s+now\b/i.test(text)) timeAnchor = new Date();
+    summaryField.value = text;
+    applySpokenSummary(text, timeAnchor || new Date());
+  };
+  const text = await askOutLoud("Say Name to begin. Say Call log complete to prepare review.", { collect: true, finishOnComplete: true, silent: true, retries: 0, onTranscript });
+  onTranscript(text);
   showDictationReview();
-  setVoiceStatus("Draft ready. Review the log and press Save call.");
-  await speak("Your draft is ready for review. Press Save call when it is correct.");
+  setVoiceStatus("Draft ready. Review the log and press Save.");
 }
 
 function showDictationReview() {
@@ -164,6 +187,8 @@ function showDictationReview() {
 
 function updateDictationReview() {
   document.querySelector("#review-log").textContent = callToText(createCallFromForm()) + (additionalContacts.value.trim() ? `\nAdditional contacts:\n${additionalContacts.value}` : "");
+  const missing = [["Name", contactName.value.trim()], ["Subject", appointmentSubject.value.trim()], ["Start time", appointmentDatetime.value], ["End time", appointmentEndDatetime.value], ["Status", appointmentStatus.value], ["Purpose", new FormData(form).get("appointmentType")], ["Mileage", mileage.value], ["Notes", appointmentNotes.value.trim()]].filter(([, value]) => !value).map(([label]) => label);
+  document.querySelector("#review-missing").textContent = missing.length ? `Missing or unrecognized: ${missing.join(", ")}. Complete these fields before saving.` : "";
 }
 form.addEventListener("input", updateDictationReview);
 form.addEventListener("change", updateDictationReview);

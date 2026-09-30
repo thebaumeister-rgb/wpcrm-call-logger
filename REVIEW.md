@@ -1,4 +1,6 @@
-# Version 20 review and proof
+# Version 21 review and proof
+
+Current release: ordered Name/Subject/Time/Status/Purpose/Mileage/Notes streaming capture. Only Call log complete prepares review. Stop, silence and five-minute timeout do not finalize; Save is disabled while recording. New end-time/status fields survive JSON/CSV exports and edits; legacy imports derive defaults. Now minus three is verified against an anchored clock. Missing/invalid fields and reversed time ranges block saving. The 18-check suite uses mocked speech events, not real phone audio. End/status handling in the separate live WPCRM workflow remains to be verified before use.
 
 Startup now clears every editable entry field, unselects appointment type, leaves date/time empty and no longer restores the previous draft. Sample placeholders are removed. Saved calls and contact directory are not deleted. The updated startup test verifies blank fields despite a stored draft and retained saved history.
 
@@ -6,7 +8,7 @@ Sharing now handles rejected Web Share promises, including permission denial, by
 
 The guide narration and its no-input retry narration are disabled in summary dictation. Missing-detail prompts remain enabled. The mocked-recognition test asserts that no speech plays before the initial dictation answer.
 
-Version 20 adds an on-screen dictation guide, "save it" speech termination and a formatted draft review. Summary dictation never commits records without the Save call button. The 16 automated checks include mocked recognition events proving guide visibility, command removal from notes, local draft persistence and final button-only saving. Earlier checks cover contact import and missing-detail prompts. Parsing remains label-based, not general-purpose AI. Real phone audio and actual WPCRM export headers remain unverified. CSV import uses Papa Parse 5.5.3 (MIT).
+The on-screen guide now uses Call log complete, replacing the older save-it command. Summary dictation never commits records without the Save button. Parsing remains label-based, not general-purpose AI. Real phone audio and actual WPCRM export headers remain unverified. CSV import uses Papa Parse 5.5.3 (MIT).
 
 Multiple contacts save atomically as separate records with unique IDs and a shared meeting group ID. Blank lines and repeated names are removed. The user confirms the recipients before saving. Mileage is counted only once; later edits are per record. Tests verify draft recovery, cancellation, export structure, mileage and independent editing. There is no automatic WPCRM upload.
 
@@ -20,7 +22,7 @@ Reviewed 2026-09-29. Scope: static phone PWA and JSON handoff, not the legacy co
 - Medium: microphone startup and stopping during speech could hang. Startup is bounded; Stop settles pending operations and retains the form.
 - Medium: call type recognition could loop indefinitely and spoken dates could silently fall back. Invalid types stop after two answers; uncertain dates require correction.
 - Medium: dictated notes stopped at the first final recognition segment. Notes now accumulate segments with a silence window.
-- Medium: deletion was immediate. Delete is confirmed and saved calls can be edited. Automatic draft restoration was removed in Version 20 at the user's request for blank startup fields.
+- Medium: deletion was immediate. Delete is confirmed and saved calls can be edited. Automatic draft restoration was removed in Version 21 at the user's request for blank startup fields.
 - Medium: backups could not be restored in the app. Validated JSON import now merges by stable record ID.
 - Medium: minute-only filenames could collide. JSON and CSV names now include seconds and milliseconds.
 - Medium: offline navigation with a new query string could fail; cache cleanup affected unrelated caches. Navigation fallback now ignores query strings, and cleanup only targets this app's caches.

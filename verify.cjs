@@ -8,6 +8,9 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
 async function saveForm(page) {
   await page.evaluate(() => {
     if (!appointmentDatetime.value) appointmentDatetime.value = nowForInput();
+    if (!appointmentEndDatetime.value) appointmentEndDatetime.value = appointmentDatetime.value;
+    if (!appointmentStatus.value) appointmentStatus.value = 'Completed';
+    if (!mileage.value) mileage.value = '0';
     if (!new FormData(form).get('appointmentType')) setAppointmentType('Decision-Maker Conference Call');
   });
   await page.locator('#save-call').click();
@@ -163,32 +166,57 @@ async function saveForm(page) {
       assert.equal(await p.locator('.call-card').count(), 1);
       await p.close();
     });
-    await check('Summary fills fields; missing-detail prompts and confirmation use mocked speech', async () => {
+    await check('Ordered fields, relative hours, explicit ranges, status and legacy import', async () => {
       const p = await browser.newPage();
       await p.goto(base);
-      await p.locator('#spoken-summary').fill('Contact Robert Connor. Subject RV16 quote. Type meeting. Mileage 20. Notes Discussed pricing. Actions Send quote.');
+      await p.locator('#spoken-summary').fill('Name Robert Connor. Subject RV16 quote. Time now minus three. Status Open. Purpose meeting. Mileage 20. Notes Discussed pricing.');
       await p.locator('#apply-summary').click();
       assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
       assert.equal(await p.locator('#appointment-subject').inputValue(), 'RV16 quote');
       assert.equal(await p.locator('#mileage').inputValue(), '20');
-      assert.equal(await p.locator('#actions').inputValue(), 'Send quote');
-      const prompts = await p.evaluate(async () => {
-        resetForm();
-        const prompts = [];
-        const answers = ['Notes Discussed pricing.', 'Robert Connor', 'RV16 quote', 'call'];
-        askOutLoud = async question => { prompts.push(question); if (!answers.length) throw new Error('Unexpected question'); return answers.shift(); };
-        speak = async () => {};
-        await completeDictation();
-        return prompts;
+      assert.equal(await p.locator('#appointment-status').inputValue(), 'Open');
+      const ranges = await p.evaluate(() => {
+        const now = new Date(2026, 8, 29, 14, 0);
+        return [parseTimeRange('Now', now), parseTimeRange('Now -3', now), parseTimeRange('start 2026-09-28 09:00 end 2026-09-29 11:30'), parseTimeRange('nonsense'), parseTimeRange('start 2026-09-29 15:00 end 2026-09-29 12:00')];
       });
-      assert.equal(prompts.length, 4);
-      assert.equal(prompts.some(prompt => prompt === 'Appointment notes?'), false);
+      assert.deepEqual(ranges[0], { start: '2026-09-29T14:00', end: '2026-09-29T14:00' });
+      assert.deepEqual(ranges[1], { start: '2026-09-29T11:00', end: '2026-09-29T14:00' });
+      assert.deepEqual(ranges[2], { start: '2026-09-28T09:00', end: '2026-09-29T11:30' });
+      assert.equal(ranges[3], null); assert.equal(ranges[4], null);
       assert.equal(await p.locator('.call-card').count(), 0);
       assert.equal(await p.locator('#dictation-review').isVisible(), true);
       assert.match(await p.locator('#review-log').textContent(), /Discussed pricing/);
       await saveForm(p);
       assert.equal(await p.locator('.call-card').count(), 1);
       assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].appointment_notes), 'Discussed pricing');
+      const saved = await p.evaluate(() => JSON.parse(getJsonExport())[0]);
+      assert.equal(saved.completed, 'No');
+      assert.equal(saved.status, 'Open');
+      assert.ok(saved.appointment_end_datetime);
+      await p.reload();
+      await p.getByRole('button', { name: 'Edit', exact: true }).click();
+      assert.equal(await p.locator('#appointment-status').inputValue(), 'Open');
+      assert.equal(await p.locator('#appointment-end-datetime').inputValue(), saved.appointment_end_datetime);
+      const legacy = await p.evaluate(() => {
+        const row = JSON.parse(getJsonExport())[0]; delete row.status; delete row.appointment_end_datetime; row.completed = 'Yes';
+        return validateCalls([row])[0];
+      });
+      assert.equal(legacy.status, 'Completed');
+      assert.equal(legacy.appointment_end_datetime, legacy.appointment_datetime);
+      await p.close();
+    });
+    await check('Missing or invalid dictated fields block save and free notes retain field words', async () => {
+      const p = await browser.newPage(); await p.goto(base);
+      await p.locator('#spoken-summary').fill('Name Sample Person Subject Test Time unknown Status maybe Purpose boat Mileage negative five Notes Discuss time status and purpose with the team.');
+      await p.locator('#apply-summary').click();
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Discuss time status and purpose with the team');
+      assert.match(await p.locator('#review-missing').textContent(), /Start time.*Status.*Purpose.*Mileage/);
+      await p.locator('#save-call').click();
+      assert.equal(await p.locator('.call-card').count(), 0);
+      await p.evaluate(() => applySpokenSummary('Name Sample Person Subject Test Time now Status Open Purpose call Mileage 0 Notes Test.'));
+      await p.locator('#appointment-end-datetime').fill('2000-01-01T00:00');
+      await p.locator('#save-call').click();
+      assert.equal(await p.locator('.call-card').count(), 0);
       await p.close();
     });
     await check('Share permission denial downloads intact JSON; cancellation does not download', async () => {
@@ -249,7 +277,7 @@ async function saveForm(page) {
       await p.waitForFunction(() => document.querySelector('#start-voice').textContent === 'Start voice');
       await ctx.close();
     });
-    await check('On-screen guide and save-it speech command prepare a draft without saving', async () => {
+    await check('Streaming field triggers and only Call log complete prepare review', async () => {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await ctx.addInitScript(() => {
         window.SpeechRecognition = class { start() { window.mockRecognition = this; setTimeout(() => this.onstart?.(), 0); } abort() {} };
@@ -260,16 +288,25 @@ async function saveForm(page) {
       await p.locator('#dictate-details').click();
       await p.waitForFunction(() => acceptingVoiceAnswer);
       assert.equal(await p.locator('#dictation-guide').isVisible(), true);
+      assert.equal(await p.locator('#dictation-guide li').count(), 7);
       assert.deepEqual(await p.evaluate(() => window.spokenPrompts), []);
       await p.screenshot({ path: 'proof/dictation-guide.png', fullPage: true });
       await p.evaluate(() => {
-        const result = [{ transcript: 'Contact name Robert Connor. Appointment subject RV16 quote. Telephone call. Now. Appointment notes Requested pricing. Save it.' }];
+        const result = [{ transcript: 'Ignore this introduction. Name Robert Connor. Subject RV16 quote. Time now. Status Completed. Purpose call. Mileage zero. Notes Requested pricing. Save it.' }];
         result.isFinal = true;
+        window.mockRecognition.onresult({ resultIndex: 0, results: [result] });
+      });
+      assert.equal(await p.evaluate(() => voiceActive), true);
+      assert.equal(await p.locator('#dictation-review').isHidden(), true);
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      assert.equal(await p.locator('#save-call').isDisabled(), true);
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Call log complete.' }]; result.isFinal = true;
         window.mockRecognition.onresult({ resultIndex: 0, results: [result] });
       });
       await p.waitForFunction(() => !voiceActive);
       assert.equal(await p.locator('#dictation-review').isVisible(), true);
-      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Requested pricing');
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Requested pricing. Save it');
       assert.equal(await p.locator('.call-card').count(), 0);
       assert.match(await p.evaluate(() => localStorage.getItem('wpcrm-call-draft-v1')), /Requested pricing/);
       await p.screenshot({ path: 'proof/dictation-review.png', fullPage: true });

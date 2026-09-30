@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=20">
+    <link rel="manifest" href="manifest.webmanifest?v=21">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 20</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 21</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -43,7 +43,8 @@
           <section id="dictation-guide" hidden aria-label="Dictation guide" tabindex="-1">
             <h2>Dictation guide</h2>
             <p>This guide helps you follow a format while dictating.</p>
-            <ol><li>Contact name</li><li>Appointment subject</li><li>Meeting or telephone call</li><li>Mileage</li><li>Say "Now" for the current date and time, or "Date and time" followed by a specific date and time.</li><li>Appointment notes</li><li>Say "save it" to prepare your log for review. Then press Save call.</li></ol>
+            <ol><li>Name [Name(s) of the contact(s)]</li><li>Subject [Brief description of the call]</li><li>Time ["Now" sets start and end to the current time; "Now -3" sets start three hours ago and end now; or specific start and end date and time]</li><li>Status ["Open" or "Completed"]</li><li>Purpose ["Call" or "Meeting"]</li><li>Mileage ["123" or "0"]</li><li>Notes [Free notes]</li></ol>
+            <p>Say "Call log complete" to prepare the review. Then press Save.</p>
           </section>
         </section>
         <section class="field-block">
@@ -53,7 +54,7 @@
           <datalist id="contact-options"></datalist>
         </section>
         <section class="field-block">
-          <label for="contact-name">Contact name</label>
+          <label for="contact-name">Name</label>
           <input id="contact-name" name="contactName" type="text" autocomplete="off" list="contact-options" required>
           <p id="contact-match" role="status"></p>
         </section>
@@ -64,36 +65,41 @@
         </section>
 
         <section class="field-block">
-          <label for="appointment-subject">Appointment subject</label>
+          <label for="appointment-subject">Subject</label>
           <input id="appointment-subject" name="appointmentSubject" type="text" required>
         </section>
 
         <section class="field-block">
-          <span class="label">Appointment type</span>
+          <label for="appointment-datetime">Time - Start</label>
+          <input id="appointment-datetime" name="appointmentDatetime" type="datetime-local" required>
+          <label for="appointment-end-datetime">Time - End</label>
+          <input id="appointment-end-datetime" name="appointmentEndDatetime" type="datetime-local" required>
+        </section>
+        <section class="field-block">
+          <label for="appointment-status">Status</label>
+          <select id="appointment-status" name="appointmentStatus" required><option value=""></option><option value="Open">Open</option><option value="Completed">Completed</option></select>
+        </section>
+        <section class="field-block">
+          <span class="label">Purpose</span>
           <div class="segmented-control" role="radiogroup" aria-label="Appointment type">
             <label>
               <input type="radio" name="appointmentType" value="Decision-Maker Conference Call" required>
-              <span>DM call</span>
+              <span>Call</span>
             </label>
             <label>
               <input type="radio" name="appointmentType" value="Decision-Maker Meeting">
-              <span>DM meeting</span>
+              <span>Meeting</span>
             </label>
           </div>
         </section>
 
-        <section class="field-block">
-          <label for="appointment-datetime">Date and time</label>
-          <input id="appointment-datetime" name="appointmentDatetime" type="datetime-local" required>
-        </section>
-
-        <section class="field-block mileage-field is-hidden" id="mileage-field" hidden>
+        <section class="field-block mileage-field" id="mileage-field">
           <label for="mileage">Mileage</label>
-          <input id="mileage" name="mileage" type="number" min="0" step="0.1" inputmode="decimal">
+          <input id="mileage" name="mileage" type="number" min="0" step="0.1" inputmode="decimal" required>
         </section>
 
         <section class="field-block">
-          <label for="appointment-notes">Appointment notes</label>
+          <label for="appointment-notes">Notes</label>
           <textarea id="appointment-notes" name="appointmentNotes" rows="6" required></textarea>
         </section>
         <section class="field-block">
@@ -101,10 +107,8 @@
           <textarea id="actions" name="actions" rows="2"></textarea>
         </section>
 
-        <input type="hidden" name="completed" value="Yes">
-
-        <section id="dictation-review" hidden aria-live="polite"><h2>Review appointment</h2><pre id="review-log" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre><p>Draft only. Press Save call to save the appointment.</p></section>
-        <button class="primary-button" id="save-call" type="submit">Save call</button>
+        <section id="dictation-review" hidden aria-live="polite"><h2>Review appointment</h2><pre id="review-log" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre><p id="review-missing" role="status"></p><p>Draft only. Press Save to save the appointment.</p></section>
+        <button class="primary-button" id="save-call" type="submit">Save</button>
       </form>
 
       <section class="toolbar" aria-label="Saved call tools">
@@ -131,7 +135,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=20" defer></script>
-    <script src="entry-tools.js?v=20" defer></script>
+    <script src="app.js?v=21" defer></script>
+    <script src="entry-tools.js?v=21" defer></script>
   </body>
 </html>

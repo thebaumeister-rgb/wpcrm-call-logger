@@ -11,6 +11,8 @@ const contactName = document.querySelector("#contact-name");
 const additionalContacts = document.querySelector("#additional-contacts");
 const appointmentSubject = document.querySelector("#appointment-subject");
 const appointmentDatetime = document.querySelector("#appointment-datetime");
+const appointmentEndDatetime = document.querySelector("#appointment-end-datetime");
+const appointmentStatus = document.querySelector("#appointment-status");
 const appointmentNotes = document.querySelector("#appointment-notes");
 const mileage = document.querySelector("#mileage");
 const mileageField = document.querySelector("#mileage-field");
@@ -73,9 +75,11 @@ function normalizeCall(call) {
     contact_name: call.contact_name || "",
     appointment_subject: call.appointment_subject || call.meeting_point || "",
     appointment_datetime: call.appointment_datetime || "",
-    completed: call.completed || "Yes",
+    appointment_end_datetime: call.appointment_end_datetime ?? call.appointment_datetime ?? "",
+    status: call.status ?? (call.completed === "No" ? "Open" : "Completed"),
+    completed: call.status ? (call.status === "Completed" ? "Yes" : "No") : (call.completed || "Yes"),
     appointment_type: call.appointment_type || "Decision-Maker Conference Call",
-    mileage: call.mileage || "",
+    mileage: call.mileage ?? "",
     appointment_notes: call.appointment_notes || call.actions || call.meeting_point || "",
     recorded_at: call.recorded_at || "",
     actions: call.actions || "",
@@ -116,9 +120,12 @@ function validateCalls(rows) {
     for (const key of ["id", "contact_name", "appointment_subject", "appointment_datetime", "appointment_type", "appointment_notes", "actions", "timezone", "recorded_at", "meeting_point", "completed", "wpcrm_workflow"]) {
       if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
     }
-    for (const key of ["meeting_group_id", "contact_id", "contact_company"]) if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
+    for (const key of ["meeting_group_id", "contact_id", "contact_company", "status", "appointment_end_datetime"]) if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
     if (row.mileage != null && typeof row.mileage !== "string" && typeof row.mileage !== "number") throw new Error("Invalid mileage.");
     const call = normalizeCall(row);
+    if (!["Open", "Completed"].includes(call.status)) throw new Error("Choose Open or Completed.");
+    if (row.status && row.completed && row.completed !== (row.status === "Completed" ? "Yes" : "No")) throw new Error("Status and completed flag disagree.");
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(call.appointment_end_datetime) || Number.isNaN(Date.parse(call.appointment_end_datetime)) || Date.parse(call.appointment_end_datetime) < Date.parse(call.appointment_datetime)) throw new Error("End time must be valid and not earlier than start time.");
     if (!call.contact_name.trim() || !call.appointment_subject.trim() || !call.appointment_notes.trim() || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(call.appointment_datetime) || Number.isNaN(Date.parse(call.appointment_datetime))) throw new Error("A call is missing required details or has an invalid date.");
     if (!["Decision-Maker Conference Call", "Decision-Maker Meeting"].includes(call.appointment_type)) throw new Error("Unknown appointment type.");
     if (call.mileage !== "" && (!Number.isFinite(Number(call.mileage)) || Number(call.mileage) < 0)) throw new Error("Invalid mileage.");
@@ -198,13 +205,15 @@ function createCallFromForm() {
     meeting_group_id: calls.find((call) => call.id === editingId)?.meeting_group_id || "",
     contact_id: calls.find((call) => call.id === editingId)?.contact_id || "",
     contact_company: calls.find((call) => call.id === editingId)?.contact_company || "",
-    wpcrm_workflow: "contact_search_add_completed_appointment",
+    wpcrm_workflow: "contact_search_add_appointment",
     contact_name: data.get("contactName").trim(),
     appointment_subject: data.get("appointmentSubject").trim(),
     appointment_datetime: data.get("appointmentDatetime"),
-    completed: "Yes",
+    appointment_end_datetime: data.get("appointmentEndDatetime"),
+    status: data.get("appointmentStatus"),
+    completed: data.get("appointmentStatus") === "Completed" ? "Yes" : "No",
     appointment_type: appointmentType,
-    mileage: isMeeting ? data.get("mileage").trim() : "",
+    mileage: data.get("mileage").trim(),
     appointment_notes: data.get("appointmentNotes").trim(),
     actions: data.get("actions").trim(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -215,7 +224,7 @@ function createCallFromForm() {
 function resetForm() {
   editingId = null;
   document.querySelector("#additional-contacts-field").hidden = false;
-  document.querySelector("#save-call").textContent = "Save call";
+  document.querySelector("#save-call").textContent = "Save";
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* Form still works without draft storage. */ }
   form.reset();
   document.querySelector("#dictation-review").hidden = true;
@@ -226,6 +235,8 @@ function resetForm() {
   mileage.value = "";
   document.querySelector('input[name="appointmentType"][value="Decision-Maker Conference Call"]').checked = true;
   appointmentDatetime.value = nowForInput();
+  appointmentEndDatetime.value = appointmentDatetime.value;
+  appointmentStatus.value = "Completed";
   updateMileageVisibility();
   contactName.focus();
 }
@@ -266,9 +277,10 @@ function callToText(call) {
   return [
     `Contact: ${call.contact_name}`,
     `Appointment subject: ${call.appointment_subject}`,
-    `Appointment type: ${call.appointment_type}`,
-    `Date/time: ${formatDateTime(call.appointment_datetime)}`,
-    `Completed: ${call.completed}`,
+    `Start: ${formatDateTime(call.appointment_datetime)}`,
+    `End: ${formatDateTime(call.appointment_end_datetime)}`,
+    `Status: ${call.status || ""}`,
+    `Purpose: ${call.appointment_type || ""}`,
     `Mileage: ${call.mileage || "None"}`,
     `Appointment notes:`,
     call.appointment_notes,
@@ -290,6 +302,8 @@ function toCsv(rows) {
     "appointment_subject",
     "appointment_type",
     "appointment_datetime",
+    "appointment_end_datetime",
+    "status",
     "completed",
     "mileage",
     "appointment_notes",
@@ -345,8 +359,8 @@ function renderCalls() {
     item.querySelector("h3").textContent = call.contact_name;
     const pills = item.querySelectorAll(".pill");
     pills[0].textContent = call.appointment_type;
-    pills[1].textContent = formatDateTime(call.appointment_datetime);
-    pills[2].textContent = call.mileage ? `Mileage ${call.mileage}` : "Completed";
+    pills[1].textContent = `${formatDateTime(call.appointment_datetime)} - ${formatDateTime(call.appointment_end_datetime)}`;
+    pills[2].textContent = `${call.status} | Mileage ${call.mileage || "0"}`;
     item.querySelector(".appointment-subject").textContent = `Subject: ${call.appointment_subject}`;
     item.querySelector(".meeting-point").textContent = call.appointment_notes;
     item.querySelector(".action-preview").textContent = call.actions ? `Actions: ${call.actions}` : "";
@@ -372,12 +386,9 @@ function renderCalls() {
 }
 
 function updateMileageVisibility() {
-  const selectedType = new FormData(form).get("appointmentType");
-  const isMeeting = selectedType === "Decision-Maker Meeting";
-  mileageField.hidden = !isMeeting;
-  mileageField.classList.toggle("is-hidden", !isMeeting);
-  mileage.required = isMeeting;
-  if (!isMeeting) mileage.value = "";
+  mileageField.hidden = false;
+  mileageField.classList.remove("is-hidden");
+  mileage.required = true;
 }
 
 function getSpeechRecognition() {
@@ -395,6 +406,8 @@ function fillForm(call) {
   document.querySelector("#additional-contacts-field").hidden = Boolean(editingId);
   appointmentSubject.value = call.appointment_subject || "";
   appointmentDatetime.value = call.appointment_datetime || nowForInput();
+  appointmentEndDatetime.value = call.appointment_end_datetime || appointmentDatetime.value;
+  appointmentStatus.value = call.status || (call.completed === "No" ? "Open" : "Completed");
   appointmentNotes.value = call.appointment_notes || "";
   document.querySelector("#actions").value = call.actions || "";
   setAppointmentType(call.appointment_type || "Decision-Maker Conference Call");
@@ -542,14 +555,15 @@ function startVoiceRecognition() {
       if (pendingVoiceAnswer.collect) {
         pendingVoiceAnswer.parts.push(transcript);
         window.clearTimeout(pendingVoiceAnswer.silence);
-        if (pendingVoiceAnswer.finishOnSave) {
+        if (pendingVoiceAnswer.finishOnComplete) {
           const combined = pendingVoiceAnswer.parts.join(" ");
-          if (/\bsave it[.!?\s]*$/i.test(combined) && !/\b(?:don['’]?t|do not|not)\s+save it[.!?\s]*$/i.test(combined)) {
+          pendingVoiceAnswer.onTranscript?.(combined);
+          if (/\bname\b/i.test(combined) && /\bcall log complete[.!?\s]*$/i.test(combined) && !/\b(?:don['’]?t|do not|not)\s+call log complete[.!?\s]*$/i.test(combined)) {
             const answer = pendingVoiceAnswer;
             pendingVoiceAnswer = null;
             acceptingVoiceAnswer = false;
             window.clearTimeout(answer.timeout);
-            answer.resolve(combined.replace(/\bsave it[.!?\s]*$/i, "").trim());
+            answer.resolve(combined.replace(/\bcall log complete[.!?\s]*$/i, "").trim());
           }
           return;
         }
@@ -642,11 +656,12 @@ function listenForCurrentPrompt(options = {}) {
       const answer = pendingVoiceAnswer;
       window.clearTimeout(answer?.silence);
       pendingVoiceAnswer = null;
-      if (answer?.parts.length) resolve(answer.parts.join(" "));
+      if (options.finishOnComplete) reject(new Error("Listening timed out. Draft kept; no review or save was triggered."));
+      else if (answer?.parts.length) resolve(answer.parts.join(" "));
       else reject(new Error("I did not hear anything."));
-    }, options.collect ? 60000 : 12000);
+    }, options.finishOnComplete ? 300000 : options.collect ? 60000 : 12000);
 
-    pendingVoiceAnswer = { resolve, reject, timeout, collect: options.collect, finishOnSave: options.finishOnSave, parts: [] };
+    pendingVoiceAnswer = { resolve, reject, timeout, collect: options.collect, finishOnComplete: options.finishOnComplete, onTranscript: options.onTranscript, parts: [] };
     acceptingVoiceAnswer = true;
   });
 }
@@ -667,6 +682,7 @@ async function askOutLoud(question, options = {}) {
       setVoiceStatus(`Heard: ${answer}`);
       return answer;
     } catch (error) {
+      if (options.finishOnComplete) throw error;
       if (voiceStopRequested) {
         throw new Error("Voice entry stopped.");
       }
@@ -767,6 +783,8 @@ async function runVoiceEntry(mode = "guided") {
   voiceStopRequested = false;
   startVoiceButton.disabled = false;
   startVoiceButton.textContent = "Stop";
+  document.querySelector("#save-call").disabled = true;
+  document.querySelector("#apply-summary").disabled = true;
   document.querySelector("#dictate-details").textContent = "Stop listening";
 
   try {
@@ -812,6 +830,8 @@ async function runVoiceEntry(mode = "guided") {
       throw new Error("Date not confirmed. Check the date and time before saving.");
     }
 
+    appointmentEndDatetime.value = appointmentDatetime.value;
+    if (appointmentType !== "Decision-Maker Meeting") mileage.value = "0";
     if (appointmentType === "Decision-Maker Meeting") {
       const mileageAnswer = await askOutLoud("Mileage.");
       mileage.value = parseMileage(mileageAnswer);
@@ -854,6 +874,8 @@ async function runVoiceEntry(mode = "guided") {
     voiceStopRequested = false;
     startVoiceButton.disabled = false;
     startVoiceButton.textContent = "Start voice";
+    document.querySelector("#save-call").disabled = false;
+    document.querySelector("#apply-summary").disabled = false;
     document.querySelector("#dictate-details").textContent = "Dictate details";
   }
 }

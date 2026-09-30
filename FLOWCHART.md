@@ -8,8 +8,8 @@ flowchart TD
     C --> D[Enter contact, optional additional contacts, subject, type, date/time and notes]
     C --> E[Answer spoken questions]
     C --> S[Dictate labeled summary]
-    S --> V[Say save it to prepare draft]
-    V --> T[Fill fields and ask for missing details]
+    S --> V[Say Call log complete to prepare draft]
+    V --> T[Review fields and correct missing details]
     T --> D
     E --> D
     D --> F{Meeting?}
@@ -26,7 +26,7 @@ flowchart TD
     M --> N{One confirmed match?}
     N -- No --> O[Ask user to choose or skip]
     O --> M
-    N -- Yes --> P[Add completed appointment with exported details]
+    N -- Yes --> P[Add appointment with exported status and start/end times]
     P --> Q[Verify WPCRM save and track record ID]
 ```
 

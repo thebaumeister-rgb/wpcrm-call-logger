@@ -40,6 +40,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -154,6 +155,7 @@ label,
 input[type="text"],
 input[type="datetime-local"],
 input[type="number"],
+select,
 textarea {
   width: 100%;
   min-height: 48px;
