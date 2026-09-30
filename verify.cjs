@@ -195,7 +195,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       assert.equal(await page.locator('#share-status').isVisible(), true);
       assert.equal(await page.evaluate(() => getJsonExport()), before);
       await page.evaluate(async () => {
-        navigator.share = async () => { throw new DOMException('Canceled', 'AbortError'); };
+        Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { throw new DOMException('Canceled', 'AbortError'); } });
         const original = downloadFile;
         downloadFile = () => { throw new Error('Unexpected download on cancellation'); };
         try { await shareJsonExport(); } finally { downloadFile = original; }
