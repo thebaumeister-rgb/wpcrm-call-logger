@@ -216,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="29"', 'name="app-version" content="30"').replace('Version 29', 'Version 30');
+      const future = html.replace('name="app-version" content="30"', 'name="app-version" content="31"').replace('Version 30', 'Version 31');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -225,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=30&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=31&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=30&reload=*');
+      await p.waitForURL('**/index.html?v=31&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -513,6 +513,46 @@ async function saveForm(page) {
       assert.equal(await browserPage.locator('#dictate-on-tap').isDisabled(), true);
       assert.match(await browserPage.locator('#voice-status').textContent(), /Offline dictation requires/);
       await browserPage.close();
+    });
+    await check('Offline capitalization formats names and sentences while preserving identifiers and manual text', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => {
+        window.OfflineAndroid = {
+          start(id) { window.activeId = id; queueMicrotask(() => receiveOfflineSpeech({ id, type: 'start' })); },
+          stop() {}, exportFile() {}, openUpdates() {}
+        };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      const emit = (text, final = false) => p.evaluate(({ text, final }) => receiveOfflineSpeech({ id: activeId, type: 'result', text, final }), { text, final });
+      await p.locator('#contact-name').click();
+      await emit('ROBERT'); await emit('ROBERT CONNOR', true);
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      await p.locator('#appointment-notes').click();
+      await emit('ROBERT CONNOR REQUESTED AN RV16-26A VALVE.');
+      await emit('ROBERT CONNOR REQUESTED AN RV16-26A VALVE. I WILL SEND THE PDF TO THE OEM.', true);
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Robert Connor requested an RV16-26A valve. I will send the PDF to the OEM.');
+      await p.evaluate(() => stopFieldDictation());
+      await p.locator('#appointment-subject').fill('Valve quotation');
+      await saveForm(p);
+      const saved = await p.evaluate(() => JSON.parse(getJsonExport())[0]);
+      assert.equal(saved.contact_name, 'Robert Connor');
+      assert.equal(saved.appointment_notes, 'Robert Connor requested an RV16-26A valve. I will send the PDF to the OEM.');
+      const values = await p.evaluate(() => {
+        stopFieldDictation();
+        directory = [{ name: 'DeAnna MacLeod', company: '', id: '42' }];
+        const notes = document.querySelector('#appointment-notes');
+        notes.value = 'Keep eBay spelling: ';
+        notes.setSelectionRange(notes.value.length, notes.value.length);
+        writeFieldSpeech(notes, 'QUOTE RV16-26A AND D05', { format: true });
+        return [formatDictatedText("PAUL BUCK, ANNE O'NEILL", 'additional-contacts'),
+          formatDictatedText('DEANNA MACLEOD', 'contact-name'),
+          formatDictatedText('QUOTE RV16-26A AT 3000 PSI', 'appointment-subject'),
+          formatDictatedText("I'M SENDING THE PDF. PLEASE REVIEW IT.", 'actions'),
+          formatDictatedText('Keep iPhone and eBay', 'appointment-notes'), notes.value];
+      });
+      assert.deepEqual(values, ["Paul Buck, Anne O'Neill", 'DeAnna MacLeod', 'Quote RV16-26A at 3000 PSI',
+        "I'm sending the PDF. Please review it.", 'Keep iPhone and eBay', 'Keep eBay spelling: quote RV16-26A and D05']);
+      await ctx.close();
     });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));

@@ -28,7 +28,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Android build failed' }
     $Release = Join-Path $Root 'release'
     New-Item -ItemType Directory -Force $Release | Out-Null
-    $Apk = Join-Path $Release 'wpcrm-offline-v29-preview.apk'
+    $Apk = Join-Path $Release 'wpcrm-offline-v30-preview.apk'
     Copy-Item (Join-Path $PSScriptRoot 'app/build/outputs/apk/release/app-release.apk') $Apk
     & (Join-Path $env:ANDROID_HOME 'build-tools/35.0.0/apksigner.bat') verify --verbose $Apk
     if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed' }

@@ -35,7 +35,44 @@ function positionFieldMicrophone() {
 window.visualViewport?.addEventListener("resize", positionFieldMicrophone);
 window.visualViewport?.addEventListener("scroll", positionFieldMicrophone);
 
-function writeFieldSpeech(target, text) {
+function formatDictatedText(text, fieldId, precedingText = "") {
+  // Format engine-generated capitals only. Never rewrite typed text or saved history.
+  if (!/\p{L}/u.test(text) || /\p{Ll}/u.test(text)) return text;
+  const titleName = name => {
+    const trimmed = name.trim();
+    const matches = matchesFor(trimmed);
+    if (matches.length === 1) return trimmed.includes("|") ? contactLabel(matches[0]) : matches[0].name;
+    return name.replace(/\p{L}+(?:['\u2019-]\p{L}+)*/gu, word => {
+      if (/^(II|III|IV)$/.test(word)) return word;
+      return word.toLowerCase().replace(/(^|['\u2019-])\p{L}/gu, letter => letter.toUpperCase())
+        .replace(/^Mc(\p{L})/u, (_, letter) => "Mc" + letter.toUpperCase());
+    });
+  };
+  if (fieldId === "contact-name" || fieldId === "additional-contacts") {
+    return text.replace(/\bCOMMA\b/g, ",").split(/([,\n]+)/).map(part => /[,\n]/.test(part) ? part : titleName(part)).join("");
+  }
+  if (!["appointment-subject", "appointment-notes", "actions"].includes(fieldId)) return text;
+  const acronyms = new Set(["WPCRM", "CRM", "OEM", "SAE", "ISO", "PSI", "GPM", "RPM", "HP", "AC", "DC", "PDF", "CAD", "CNC", "PLC", "USB", "USA", "LLC"]);
+  let formatted = text.replace(/[\p{L}\p{N}]+(?:[-./'][\p{L}\p{N}]+)*/gu, word => {
+    if ((/\p{L}/u.test(word) && /\p{N}/u.test(word)) || acronyms.has(word)) return word;
+    return word.toLowerCase();
+  }).replace(/\bi\b/g, "I");
+  formatted = formatted.replace(/(^|[.!?]\s+|\n\s*)(["'\u201c(]*)(\p{L})/gu, (match, boundary, quotes, letter, offset) => {
+    if (offset === 0 && precedingText.trim() && !/[.!?]\s*$/.test(precedingText) && !/\n\s*$/.test(precedingText)) return match;
+    return boundary + quotes + letter.toUpperCase();
+  });
+  // Restore the selected contacts' spelling in notes without guessing other proper nouns.
+  const names = [contactName.value, ...splitAdditionalContacts(additionalContacts.value)]
+    .map(name => name.split("|")[0].trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    formatted = formatted.replace(new RegExp(`(^|[^\\p{L}\\p{N}])(${escaped})(?=$|[^\\p{L}\\p{N}])`, "giu"), (_, before) => before + name);
+  }
+  return formatted;
+}
+
+function writeFieldSpeech(target, text, { format = false } = {}) {
+  if (format) text = formatDictatedText(text, target.id, target.value.slice(0, target.selectionStart ?? 0));
   const clean = text.trim().replace(/[.!?]+$/, "");
   if (target.matches('[role="radiogroup"]')) {
     if (!/^(call|telephone call|conference call|meeting)$/i.test(clean)) throw new Error("Say Call or Meeting.");
@@ -139,7 +176,7 @@ function startFieldDictation(target) {
         target.value = session.original;
         target.setSelectionRange(session.start, session.end);
         const text = combine(session.runs.map(item => item.text));
-        if (text) writeFieldSpeech(target, text);
+        if (text) writeFieldSpeech(target, text, { format: recognition.offline });
         session.rendered = target.value;
       } else {
         const finalized = results.filter(result => result.isFinal);

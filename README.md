@@ -1,4 +1,6 @@
-# WPCRM Call Logger - Version 29 Offline Android Preview
+# WPCRM Call Logger - Version 30 Offline Android Preview
+
+Version 30 formats new uppercase dictation locally: title case for contact names, sentence case for subjects/notes/actions, and unchanged letter-number identifiers such as RV16-26A. Common technical acronyms stay uppercase. Exact imported contact matches keep their verified spelling. Typed text and saved history are not reformatted. Unusual names, acronyms and speech-recognition mistakes still need review; no online language service is used.
 
 The Android APK bundles its English speech model and processes microphone audio entirely on the device. It has no INTERNET permission, no account, no cloud speech fallback, and no model download at first launch. Native AudioRecord stays open through pauses; only the speech decoder segments phrases. Stop flushes the last words for review. The native path preserves repeated phrases rather than applying the old replay-removal heuristic.
 
@@ -49,6 +51,6 @@ appointment_datetime is the start; appointment_end_datetime is the end. status i
 
 ## Verification And Development
 
-The browser/bridge suite has 25 checks. Android instrumentation tests exercise the bundled real model, silent capture and the absence of network permission. See REVIEW.md for run results and remaining physical-phone checks. No customer records are used in tests. The APK, not the source ZIP, is the phone installer.
+The browser/bridge suite has 26 checks. Android instrumentation tests exercise the bundled real model, silent capture and the absence of network permission. See REVIEW.md for run results and remaining physical-phone checks. No customer records are used in tests. The APK, not the source ZIP, is the phone installer.
 
 With Node installed, run node serve.cjs 8081 and open http://127.0.0.1:8081. With Playwright and Edge available, run node verify.cjs. Run package.ps1 after successful tests. Packaging excludes customer data and repository history. Release updates must keep APP_VERSION, app-version metadata, asset versions and cache version aligned.

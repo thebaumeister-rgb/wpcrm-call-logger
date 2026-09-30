@@ -1,11 +1,11 @@
-# WPCRM Offline Android Preview 29
+# WPCRM Offline Android Preview 30
 
 The APK bundles the existing single-page form, a native AudioRecord microphone, sherpa-onnx 1.13.8, and the English streaming Zipformer2 model (2023-06-26 mobile, int8 encoder/joiner). No server, account, model download at first launch, or Android INTERNET permission. Runtime assets load only from the packaged WebView asset origin; other requests are blocked. The browser version no longer calls cloud speech recognition.
 
 ## Phone installation and migration
 
 1. In the old browser app, Export JSON to back up saved calls. Keep that app until migration is verified.
-2. Download `wpcrm-offline-v29-preview.apk` from this repository's Android release on the Samsung. This is not the source ZIP or a browser update.
+2. Download `wpcrm-offline-v30-preview.apk` from this repository's Android release on the Samsung. This is not the source ZIP or a browser update.
 3. Open the APK from Downloads. If Android asks, allow installation from that specific source, then turn that permission back off afterward. Do not disable other device security. If a work-device policy blocks installation, ask IT rather than bypassing it.
 4. Open **WPCRM Offline**. Allow microphone access while using the app.
 5. Import saved calls from the backup; import the contact directory separately. Browser storage does not automatically transfer into an Android package.

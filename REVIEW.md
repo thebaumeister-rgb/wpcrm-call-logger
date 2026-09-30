@@ -1,4 +1,6 @@
-# Version 29 Offline Android Preview: Review And Proof
+# Version 30 Offline Android Preview: Review And Proof
+
+Version 30 adds field-aware formatting only to new all-capital offline speech. Names use title case (or an exact imported spelling), prose uses sentence case, selected names in notes keep their spelling, and letter-number part identifiers/common technical acronyms remain uppercase. Formatting rebuilds only the dictated insertion and does not alter manual text or saved records. A new integration test exercises uppercase interim/final events, imported names, apostrophes, identifiers, acronyms and mid-sentence insertion. The browser/bridge suite now contains 26 checks. Version 29's Android microphone tests below are historical evidence for the unchanged capture engine, not a new physical-phone acceptance claim.
 
 ## Current implementation
 
