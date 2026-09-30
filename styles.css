@@ -51,6 +51,13 @@ button {
   cursor: pointer;
 }
 
+.field-dictation-setting { display: flex; gap: 10px; align-items: center; min-height: 44px; }
+.field-dictation-setting input { width: 22px; height: 22px; }
+.field-microphone { position: fixed; bottom: var(--mic-bottom, 12px); left: 12px; right: 12px; margin: 0 auto; max-width: 520px; z-index: 20; background: #fff; color: #172b29; border: 2px solid #1f6f68; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 3px 16px #0003; }
+.field-microphone span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.field-microphone button { background: #a22d27; color: white; min-width: 72px; border-radius: 4px; }
+body.field-mic-active { padding-bottom: 120px; }
+
 .app-shell {
   width: min(100%, 720px);
   min-height: 100vh;

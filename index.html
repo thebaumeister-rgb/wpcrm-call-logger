@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="app-version" content="24">
+    <meta name="app-version" content="25">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f68">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=24">
+    <link rel="manifest" href="manifest.webmanifest?v=25">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=24">
+    <link rel="stylesheet" href="styles.css?v=25">
   </head>
   <body>
     <main class="app-shell">
@@ -25,29 +25,13 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 24</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 25</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
-      <section class="voice-panel" aria-label="Voice entry">
-        <div>
-          <h2>Voice entry</h2>
-          <p id="voice-status" role="status" aria-live="polite">Ready</p>
-        </div>
-        <button class="voice-button" id="start-voice" type="button">Start voice</button>
-      </section>
+      <p id="voice-status" role="status" aria-live="polite">Ready</p>
 
       <form id="call-form" class="entry-form" autocomplete="off">
-        <section class="field-block">
-          <label for="spoken-summary">Spoken summary</label>
-          <textarea id="spoken-summary" rows="3"></textarea>
-          <div class="toolbar"><button type="button" id="dictate-details">Dictate details</button><button type="button" id="apply-summary">Fill fields</button></div>
-          <section id="dictation-guide" hidden aria-label="Dictation guide" tabindex="-1">
-            <h2>Dictation guide</h2>
-            <p>This guide helps you follow a format while dictating.</p>
-            <ol><li>Name [Name of the first contact]</li><li>Add name [Additional contact names separated by commas; optional]</li><li>Subject [Brief description of the call]</li><li>Time ["Now" sets start and end to the current time; "Now -3" sets start three hours ago and end now; or specific start and end date and time]</li><li>Status ["Open" or "Completed"]</li><li>Purpose ["Call" or "Meeting"]</li><li>Mileage ["123" or "0"]</li><li>Notes [Free notes]</li></ol>
-            <p>Say "Call log complete" to prepare the review. Then press Save.</p>
-          </section>
-        </section>
+        <label class="field-dictation-setting"><input id="dictate-on-tap" type="checkbox" checked> Dictate on field tap</label>
         <section class="field-block">
           <div class="toolbar"><button type="button" id="import-contacts">Import contacts</button><button type="button" id="clear-contacts">Remove contact list</button></div>
           <input type="file" id="contacts-file" accept=".csv,.txt,.json" hidden>
@@ -107,8 +91,6 @@
           <label for="actions">Actions / to-do items (optional)</label>
           <textarea id="actions" name="actions" rows="2"></textarea>
         </section>
-
-        <section id="dictation-review" hidden aria-live="polite"><h2>Review appointment</h2><pre id="review-log" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre><p id="review-missing" role="status"></p><p>Draft only. Press Save to save the appointment.</p></section>
         <button class="primary-button" id="save-call" type="submit">Save</button>
       </form>
 
@@ -135,9 +117,14 @@
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <aside id="field-microphone" class="field-microphone" hidden aria-label="Field microphone">
+      <span id="field-microphone-status" role="status" aria-live="polite"></span>
+      <button type="button" id="stop-field-microphone">Stop</button>
+    </aside>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=24" defer></script>
-    <script src="entry-tools.js?v=24" defer></script>
+    <script src="app.js?v=25" defer></script>
+    <script src="entry-tools.js?v=25" defer></script>
+    <script src="field-dictation.js?v=25" defer></script>
   </body>
 </html>

@@ -166,59 +166,6 @@ async function saveForm(page) {
       assert.equal(await p.locator('.call-card').count(), 1);
       await p.close();
     });
-    await check('Ordered fields, relative hours, explicit ranges, status and legacy import', async () => {
-      const p = await browser.newPage();
-      await p.goto(base);
-      await p.locator('#spoken-summary').fill('Name Robert Connor. Subject RV16 quote. Time now minus three. Status Open. Purpose meeting. Mileage 20. Notes Discussed pricing.');
-      await p.locator('#apply-summary').click();
-      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
-      assert.equal(await p.locator('#appointment-subject').inputValue(), 'RV16 quote');
-      assert.equal(await p.locator('#mileage').inputValue(), '20');
-      assert.equal(await p.locator('#appointment-status').inputValue(), 'Open');
-      const ranges = await p.evaluate(() => {
-        const now = new Date(2026, 8, 29, 14, 0);
-        return [parseTimeRange('Now', now), parseTimeRange('Now -3', now), parseTimeRange('start 2026-09-28 09:00 end 2026-09-29 11:30'), parseTimeRange('nonsense'), parseTimeRange('start 2026-09-29 15:00 end 2026-09-29 12:00')];
-      });
-      assert.deepEqual(ranges[0], { start: '2026-09-29T14:00', end: '2026-09-29T14:00' });
-      assert.deepEqual(ranges[1], { start: '2026-09-29T11:00', end: '2026-09-29T14:00' });
-      assert.deepEqual(ranges[2], { start: '2026-09-28T09:00', end: '2026-09-29T11:30' });
-      assert.equal(ranges[3], null); assert.equal(ranges[4], null);
-      assert.equal(await p.locator('.call-card').count(), 0);
-      assert.equal(await p.locator('#dictation-review').isVisible(), true);
-      assert.match(await p.locator('#review-log').textContent(), /Discussed pricing/);
-      await saveForm(p);
-      assert.equal(await p.locator('.call-card').count(), 1);
-      assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].appointment_notes), 'Discussed pricing');
-      const saved = await p.evaluate(() => JSON.parse(getJsonExport())[0]);
-      assert.equal(saved.completed, 'No');
-      assert.equal(saved.status, 'Open');
-      assert.ok(saved.appointment_end_datetime);
-      await p.reload();
-      await p.getByRole('button', { name: 'Edit', exact: true }).click();
-      assert.equal(await p.locator('#appointment-status').inputValue(), 'Open');
-      assert.equal(await p.locator('#appointment-end-datetime').inputValue(), saved.appointment_end_datetime);
-      const legacy = await p.evaluate(() => {
-        const row = JSON.parse(getJsonExport())[0]; delete row.status; delete row.appointment_end_datetime; row.completed = 'Yes';
-        return validateCalls([row])[0];
-      });
-      assert.equal(legacy.status, 'Completed');
-      assert.equal(legacy.appointment_end_datetime, legacy.appointment_datetime);
-      await p.close();
-    });
-    await check('Missing or invalid dictated fields block save and free notes retain field words', async () => {
-      const p = await browser.newPage(); await p.goto(base);
-      await p.locator('#spoken-summary').fill('Name Sample Person Subject Test Time unknown Status maybe Purpose boat Mileage negative five Notes Discuss time status and purpose with the team.');
-      await p.locator('#apply-summary').click();
-      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Discuss time status and purpose with the team');
-      assert.match(await p.locator('#review-missing').textContent(), /Start time.*Status.*Purpose.*Mileage/);
-      await p.locator('#save-call').click();
-      assert.equal(await p.locator('.call-card').count(), 0);
-      await p.evaluate(() => applySpokenSummary('Name Sample Person Subject Test Time now Status Open Purpose call Mileage 0 Notes Test.'));
-      await p.locator('#appointment-end-datetime').fill('2000-01-01T00:00');
-      await p.locator('#save-call').click();
-      assert.equal(await p.locator('.call-card').count(), 0);
-      await p.close();
-    });
     await check('Share permission denial downloads intact JSON; cancellation does not download', async () => {
       await page.evaluate(() => {
         Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
@@ -257,69 +204,6 @@ async function saveForm(page) {
       assert.equal(await page.evaluate(() => localStorage.getItem('wpcrm-sales-calls-v1')), '{broken');
     });
     await context.close();
-    await check('Voice Stop releases stalled startup and spoken prompt', async () => {
-      const ctx = await browser.newContext();
-      await ctx.addInitScript(() => {
-        window.SpeechRecognition = class { start() {} abort() {} };
-      });
-      const p = await ctx.newPage();
-      await p.goto(base);
-      await p.locator('#start-voice').click();
-      await p.locator('#start-voice').click();
-      await p.waitForFunction(() => document.querySelector('#start-voice').textContent === 'Start voice');
-      await p.evaluate(() => {
-        window.SpeechRecognition = class { start() { setTimeout(() => this.onstart?.(), 0); } abort() {} };
-        speechSynthesis.speak = () => {};
-      });
-      await p.locator('#start-voice').click();
-      await p.waitForFunction(() => document.querySelector('#voice-status').textContent === 'Contact name.');
-      await p.locator('#start-voice').click();
-      await p.waitForFunction(() => document.querySelector('#start-voice').textContent === 'Start voice');
-      await ctx.close();
-    });
-    await check('Streaming field triggers and only Call log complete prepare review', async () => {
-      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      await ctx.addInitScript(() => {
-        window.SpeechRecognition = class { start() { window.mockRecognition = this; setTimeout(() => this.onstart?.(), 0); } abort() {} };
-      });
-      const p = await ctx.newPage();
-      await p.goto(base);
-      await p.evaluate(() => { window.spokenPrompts = []; speak = async (text) => { window.spokenPrompts.push(text); }; });
-      await p.locator('#dictate-details').click();
-      await p.waitForFunction(() => acceptingVoiceAnswer);
-      assert.equal(await p.locator('#dictation-guide').isVisible(), true);
-      assert.equal(await p.locator('#dictation-guide li').count(), 8);
-      assert.match(await p.locator('#dictation-guide li').nth(0).textContent(), /^Name /);
-      assert.match(await p.locator('#dictation-guide li').nth(1).textContent(), /^Add name /);
-      assert.equal(await p.evaluate(() => document.activeElement.id), 'dictation-guide');
-      const guideBox = await p.locator('#dictation-guide').boundingBox();
-      assert.ok(guideBox.y >= -1 && guideBox.y + guideBox.height <= 844, 'Guide must be inside the phone viewport after microphone startup');
-      assert.deepEqual(await p.evaluate(() => window.spokenPrompts), []);
-      await p.screenshot({ path: 'proof/dictation-guide.png', fullPage: true });
-      await p.screenshot({ path: 'proof/dictation-guide-viewport.png' });
-      await p.evaluate(() => {
-        const result = [{ transcript: 'Ignore this introduction. Name Robert Connor. Subject RV16 quote. Time now. Status Completed. Purpose call. Mileage zero. Notes Requested pricing. Save it.' }];
-        result.isFinal = true;
-        window.mockRecognition.onresult({ resultIndex: 0, results: [result] });
-      });
-      assert.equal(await p.evaluate(() => voiceActive), true);
-      assert.equal(await p.locator('#dictation-review').isHidden(), true);
-      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
-      assert.equal(await p.locator('#save-call').isDisabled(), true);
-      await p.evaluate(() => {
-        const result = [{ transcript: 'Call log complete.' }]; result.isFinal = true;
-        window.mockRecognition.onresult({ resultIndex: 0, results: [result] });
-      });
-      await p.waitForFunction(() => !voiceActive);
-      assert.equal(await p.locator('#dictation-review').isVisible(), true);
-      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Requested pricing. Save it');
-      assert.equal(await p.locator('.call-card').count(), 0);
-      assert.match(await p.evaluate(() => localStorage.getItem('wpcrm-call-draft-v1')), /Requested pricing/);
-      await p.screenshot({ path: 'proof/dictation-review.png', fullPage: true });
-      await saveForm(p);
-      assert.equal(await p.locator('.call-card').count(), 1);
-      await ctx.close();
-    });
     await check('Update button verifies server version, preserves canceled entry and reloads on approval', async () => {
       const ctx = await browser.newContext({ serviceWorkers: 'block' });
       const p = await ctx.newPage(); await p.goto(base);
@@ -332,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="24"', 'name="app-version" content="25"').replace('Version 24', 'Version 25');
+      const future = html.replace('name="app-version" content="25"', 'name="app-version" content="26"').replace('Version 25', 'Version 26');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -341,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=25&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=26&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=25&reload=*');
+      await p.waitForURL('**/index.html?v=26&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -358,24 +242,85 @@ async function saveForm(page) {
       assert.equal(await p.locator('#check-update').isEnabled(), true);
       await ctx.close();
     });
-    await check('Add name parses comma lists and repeated triggers into distinct matching records', async () => {
+    await check('Field-tap microphone, floating Stop, switching, late results and typing mode', async () => {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await ctx.addInitScript(() => {
+        window.recognizers = [];
+        window.SpeechRecognition = class {
+          start() { window.recognizers.push(this); queueMicrotask(() => this.onstart?.()); }
+          abort() { this.aborted = true; }
+        };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      assert.equal(await p.locator('#spoken-summary, #dictation-guide, #dictate-details, #start-voice').count(), 0);
+      assert.equal(await p.locator('#dictate-on-tap').isChecked(), true);
+      await p.locator('#contact-name').click();
+      await p.waitForFunction(() => document.querySelector('#field-microphone-status').textContent.startsWith('Listening'));
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Robert Connor' }]; result.isFinal = true;
+        window.lateResult = window.recognizers[0].onresult;
+        window.recognizers[0].onresult({ resultIndex: 0, results: [result] });
+      });
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      await p.locator('#appointment-notes').click();
+      assert.equal(await p.evaluate(() => window.recognizers[0].aborted), true);
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Discussed pricing.' }]; result.isFinal = true;
+        window.lateResult({ resultIndex: 0, results: [result] });
+        window.recognizers.at(-1).onresult({ resultIndex: 0, results: [result] });
+      });
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Discussed pricing.');
+      const box = await p.locator('#field-microphone').boundingBox();
+      assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= 390 && box.y + box.height <= 844);
+      await p.screenshot({ path: 'proof/field-dictation-phone.png' });
+      await p.locator('#stop-field-microphone').click();
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
+      assert.equal(await p.locator('.call-card').count(), 0);
+      await p.locator('#appointment-subject').click();
+      assert.equal(await p.locator('#field-microphone').isVisible(), true);
+      await p.locator('#dictate-on-tap').uncheck();
+      await p.locator('#appointment-subject').click();
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
+      await p.locator('#appointment-subject').fill('Typed quotation');
+      await saveForm(p);
+      assert.equal(await p.locator('.call-card').count(), 1);
+      assert.equal(await p.locator('#dictate-on-tap').isChecked(), false);
+      await p.reload();
+      assert.equal(await p.locator('#dictate-on-tap').isChecked(), false);
+      await ctx.close();
+    });
+    await check('Typed field speech values, time ranges, status, purpose and invalid values', async () => {
       const p = await browser.newPage(); await p.goto(base);
-      await p.evaluate(() => applySpokenSummary('Name Alice Adams Add name Bob Brown, Carol Cole, alice adams Add name David Day Subject Shared quotation Time now minus three Status Open Purpose Meeting Mileage 12 Notes Same discussion for everyone.'));
-      assert.equal(await p.locator('#contact-name').inputValue(), 'Alice Adams');
-      assert.equal(await p.locator('#additional-contacts').inputValue(), 'Bob Brown\nCarol Cole\nalice adams\nDavid Day');
-      p.once('dialog', dialog => dialog.accept());
-      await p.locator('#save-call').click();
-      const rows = await p.evaluate(() => JSON.parse(getJsonExport()));
-      assert.equal(rows.length, 4);
-      assert.equal(new Set(rows.map(row => row.id)).size, 4);
-      assert.equal(new Set(rows.map(row => row.meeting_group_id)).size, 1);
-      assert.ok(rows.every(row => row.appointment_subject === 'Shared quotation' && row.appointment_notes === 'Same discussion for everyone' && row.status === 'Open'));
-      assert.equal(new Set(rows.map(row => row.appointment_datetime)).size, 1);
-      assert.equal(new Set(rows.map(row => row.appointment_end_datetime)).size, 1);
-      assert.equal(rows.reduce((sum, row) => sum + Number(row.mileage), 0), 12);
-      assert.deepEqual(await p.evaluate(() => splitAdditionalContacts('Bob Brown, Carol Cole')), ['Bob Brown', 'Carol Cole']);
-      assert.deepEqual(await p.evaluate(() => splitAdditionalContacts('Robert Connor | Acme, Inc | 42')), ['Robert Connor | Acme, Inc | 42']);
+      const values = await p.evaluate(() => {
+        writeFieldSpeech(appointmentDatetime, 'Now minus three');
+        writeFieldSpeech(appointmentStatus, 'Open');
+        writeFieldSpeech(document.querySelector('[role="radiogroup"]'), 'Meeting');
+        writeFieldSpeech(mileage, 'zero');
+        writeFieldSpeech(additionalContacts, 'Paul Buck comma Jane Smith');
+        let rejected = false;
+        try { writeFieldSpeech(appointmentStatus, 'perhaps'); } catch { rejected = true; }
+        return { start: appointmentDatetime.value, end: appointmentEndDatetime.value, status: appointmentStatus.value, mileage: mileage.value, additional: additionalContacts.value, type: new FormData(form).get('appointmentType'), rejected };
+      });
+      assert.equal((new Date(values.end) - new Date(values.start)) / 3600000, 3);
+      assert.equal(values.status, 'Open'); assert.equal(values.mileage, '0');
+      assert.equal(values.type, 'Decision-Maker Meeting');
+      assert.equal(values.additional, 'Paul Buck, Jane Smith'); assert.equal(values.rejected, true);
       await p.close();
+    });
+    await check('Field microphone stops during startup and on permission error', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => { window.SpeechRecognition = class { start() { window.testRecognition = this; } abort() {} }; });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.locator('#contact-name').click();
+      await p.locator('#stop-field-microphone').click();
+      assert.equal(await p.evaluate(() => fieldSession), null);
+      await p.locator('#contact-name').click();
+      await p.evaluate(() => window.testRecognition.onerror({ error: 'not-allowed' }));
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
+      assert.match(await p.locator('#voice-status').textContent(), /permission denied/);
+      assert.equal(await p.locator('#contact-name').inputValue(), '');
+      await ctx.close();
     });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));

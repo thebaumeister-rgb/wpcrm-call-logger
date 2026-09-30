@@ -1,11 +1,9 @@
-const APP_VERSION = 24;
+const APP_VERSION = 25;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
 let storageBlocked = false;
 let editingId = null;
-let finishSpeech = null;
-let cancelMicrophoneStart = null;
 
 const form = document.querySelector("#call-form");
 const contactName = document.querySelector("#contact-name");
@@ -27,16 +25,10 @@ const copyLatestButton = document.querySelector("#copy-latest");
 const exportCsvButton = document.querySelector("#export-csv");
 const exportJsonButton = document.querySelector("#export-json");
 const shareJsonButton = document.querySelector("#share-json");
-const startVoiceButton = document.querySelector("#start-voice");
 const voiceStatus = document.querySelector("#voice-status");
 
 let calls = loadCalls();
 let toastTimer;
-let voiceActive = false;
-let voiceRecognition = null;
-let pendingVoiceAnswer = null;
-let acceptingVoiceAnswer = false;
-let voiceStopRequested = false;
 
 function nowForInput() {
   const date = new Date();
@@ -223,12 +215,13 @@ function createCallFromForm() {
 }
 
 function resetForm({ focusContact = true } = {}) {
+  const fieldDictationEnabled = document.querySelector("#dictate-on-tap").checked;
   editingId = null;
   document.querySelector("#additional-contacts-field").hidden = false;
   document.querySelector("#save-call").textContent = "Save";
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* Form still works without draft storage. */ }
   form.reset();
-  document.querySelector("#dictation-review").hidden = true;
+  document.querySelector("#dictate-on-tap").checked = fieldDictationEnabled;
   document.querySelector("#contact-match").textContent = "";
   contactName.value = "";
   appointmentSubject.value = "";
@@ -370,7 +363,7 @@ function renderCalls() {
     item.querySelector(".meeting-point").textContent = call.appointment_notes;
     item.querySelector(".action-preview").textContent = call.actions ? `Actions: ${call.actions}` : "";
     item.querySelector(".edit-button").addEventListener("click", () => {
-      if (voiceActive) return;
+      stopFieldDictation();
       if (hasDraft() && !confirm("Replace the current draft with this saved call?")) return;
       editingId = call.id;
       fillForm(call);
@@ -379,7 +372,7 @@ function renderCalls() {
       form.scrollIntoView({ behavior: "smooth" });
     });
     item.querySelector(".delete-button").addEventListener("click", () => {
-      if (voiceActive || !confirm(`Delete the saved call for ${call.contact_name}? Export a backup first if needed.`)) return;
+      if (!confirm(`Delete the saved call for ${call.contact_name}? Export a backup first if needed.`)) return;
       if (!saveCalls(calls.filter((savedCall) => savedCall.id !== call.id))) return;
       if (editingId === call.id) resetForm();
       renderCalls();
@@ -406,7 +399,6 @@ function hasDraft() {
 
 function fillForm(call) {
   contactName.value = [call.contact_name, call.contact_company, call.contact_id].filter(Boolean).join(" | ");
-  document.querySelector("#spoken-summary").value = call.spoken_summary || "";
   additionalContacts.value = call.additional_contacts || "";
   document.querySelector("#additional-contacts-field").hidden = Boolean(editingId);
   appointmentSubject.value = call.appointment_subject || "";
@@ -421,7 +413,7 @@ function fillForm(call) {
 
 function saveDraft() {
   try {
-    if (hasDraft() || document.querySelector("#spoken-summary").value) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: { ...createCallFromForm(), contact_company: "", contact_id: "", additional_contacts: additionalContacts.value, spoken_summary: document.querySelector("#spoken-summary").value }, editingId }));
+    if (hasDraft()) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: { ...createCallFromForm(), contact_company: "", contact_id: "", additional_contacts: additionalContacts.value }, editingId }));
     else localStorage.removeItem(DRAFT_KEY);
   } catch { showToast("Draft could not be backed up on this device."); }
 }
@@ -470,10 +462,10 @@ function reportUpdate(message) {
 
 function reloadAvailableUpdate() {
   if (!availableVersion) return;
-  const unfinished = hasDraft() || document.querySelector("#spoken-summary").value.trim() || appointmentDatetime.value || appointmentEndDatetime.value || appointmentStatus.value || mileage.value || new FormData(form).get("appointmentType");
-  const warning = unfinished || voiceActive ? " Any unfinished entry will be cleared and dictation stopped. Saved calls and contacts will remain." : " Saved calls and contacts will remain.";
+  const unfinished = hasDraft() || appointmentDatetime.value || appointmentEndDatetime.value || appointmentStatus.value || mileage.value || new FormData(form).get("appointmentType");
+  const warning = unfinished || fieldSession ? " Any unfinished entry will be cleared and dictation stopped. Saved calls and contacts will remain." : " Saved calls and contacts will remain.";
   if (!confirm(`Install Version ${availableVersion} and reload now?${warning}`)) return;
-  stopVoiceEntry();
+  stopFieldDictation();
   const url = new URL("index.html", location.href);
   url.searchParams.set("v", availableVersion);
   url.searchParams.set("reload", Date.now());
@@ -516,223 +508,6 @@ function showNetworkState() {
 }
 window.addEventListener("online", showNetworkState);
 window.addEventListener("offline", showNetworkState);
-
-function speak(text) {
-  return new Promise((resolve) => {
-    if (!("speechSynthesis" in window)) {
-      resolve();
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const timeout = window.setTimeout(done, 60000);
-    function done() {
-      window.clearTimeout(timeout);
-      finishSpeech = null;
-      resolve();
-    }
-    finishSpeech = done;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.onend = done;
-    utterance.onerror = done;
-    window.speechSynthesis.speak(utterance);
-  });
-}
-
-function startVoiceRecognition() {
-  const SpeechRecognition = getSpeechRecognition();
-  return new Promise((resolve) => {
-    if (!SpeechRecognition) {
-      resolve({ ok: false, message: "Speech recognition is not available in this browser." });
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    let settled = false;
-    let restarts = 0;
-    const startupTimeout = window.setTimeout(() => {
-      recognition.onend = null;
-      recognition.abort();
-      settle({ ok: false, message: "Microphone did not start within 10 seconds." });
-    }, 10000);
-    cancelMicrophoneStart = () => settle({ ok: false, message: "Voice entry stopped." });
-
-    function settle(result) {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(startupTimeout);
-      cancelMicrophoneStart = null;
-      resolve(result);
-    }
-
-    recognition.onstart = () => {
-      setVoiceStatus("Microphone is on. Waiting for the first question...");
-      settle({ ok: true });
-    };
-    recognition.onresult = (event) => {
-      if (!acceptingVoiceAnswer || !pendingVoiceAnswer) return;
-      const parts = [];
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) parts.push(event.results[i][0].transcript.trim());
-      }
-      const transcript = parts.join(" ");
-      if (!transcript) return;
-      restarts = 0;
-      setVoiceStatus(`Heard: ${transcript}`);
-      if (pendingVoiceAnswer.collect) {
-        pendingVoiceAnswer.parts.push(transcript);
-        window.clearTimeout(pendingVoiceAnswer.silence);
-        if (pendingVoiceAnswer.finishOnComplete) {
-          const combined = pendingVoiceAnswer.parts.join(" ");
-          pendingVoiceAnswer.onTranscript?.(combined);
-          if (/\bname\b/i.test(combined) && /\bcall log complete[.!?\s]*$/i.test(combined) && !/\b(?:don['’]?t|do not|not)\s+call log complete[.!?\s]*$/i.test(combined)) {
-            const answer = pendingVoiceAnswer;
-            pendingVoiceAnswer = null;
-            acceptingVoiceAnswer = false;
-            window.clearTimeout(answer.timeout);
-            answer.resolve(combined.replace(/\bcall log complete[.!?\s]*$/i, "").trim());
-          }
-          return;
-        }
-        pendingVoiceAnswer.silence = window.setTimeout(() => {
-          if (!pendingVoiceAnswer) return;
-          const answer = pendingVoiceAnswer;
-          pendingVoiceAnswer = null;
-          acceptingVoiceAnswer = false;
-          window.clearTimeout(answer.timeout);
-          answer.resolve(answer.parts.join(" "));
-        }, 3500);
-        return;
-      }
-      acceptingVoiceAnswer = false;
-      window.clearTimeout(pendingVoiceAnswer.timeout);
-      pendingVoiceAnswer.resolve(transcript);
-      pendingVoiceAnswer = null;
-    };
-    recognition.onerror = (event) => {
-      if (["not-allowed", "service-not-allowed", "audio-capture", "network"].includes(event.error)) recognition.onend = null;
-      const message = event.error === "not-allowed"
-        ? "Microphone permission was blocked."
-        : `Microphone error: ${event.error || "unknown"}`;
-
-      if (pendingVoiceAnswer) {
-        window.clearTimeout(pendingVoiceAnswer.timeout);
-        window.clearTimeout(pendingVoiceAnswer.silence);
-        pendingVoiceAnswer.reject(new Error(message));
-        pendingVoiceAnswer = null;
-      }
-
-      settle({ ok: false, message });
-    };
-    recognition.onend = () => {
-      if (voiceActive && !voiceStopRequested && restarts++ < 2) {
-        try {
-          recognition.start();
-        } catch {
-          if (pendingVoiceAnswer) {
-            window.clearTimeout(pendingVoiceAnswer.timeout);
-            window.clearTimeout(pendingVoiceAnswer.silence);
-            pendingVoiceAnswer.reject(new Error("Microphone listening stopped."));
-            pendingVoiceAnswer = null;
-          }
-        }
-      }
-    };
-
-    try {
-      recognition.start();
-    } catch {
-      settle({ ok: false, message: "Microphone listening did not start." });
-    }
-
-    voiceRecognition = recognition;
-  });
-}
-
-function stopVoiceRecognition() {
-  cancelMicrophoneStart?.();
-  acceptingVoiceAnswer = false;
-  if (pendingVoiceAnswer) {
-    const answerWait = pendingVoiceAnswer;
-    pendingVoiceAnswer = null;
-    window.clearTimeout(answerWait.timeout);
-    window.clearTimeout(answerWait.silence);
-    answerWait.reject(new Error("Voice entry stopped."));
-  }
-  if (voiceRecognition) {
-    voiceRecognition.onend = null;
-    voiceRecognition.abort();
-    voiceRecognition = null;
-  }
-}
-
-function stopVoiceEntry() {
-  if (!voiceActive) return;
-  voiceStopRequested = true;
-  setVoiceStatus("Stopping voice entry...");
-  window.speechSynthesis?.cancel();
-  finishSpeech?.();
-  stopVoiceRecognition();
-}
-
-function listenForCurrentPrompt(options = {}) {
-  return new Promise((resolve, reject) => {
-    if (voiceStopRequested) { reject(new Error("Voice entry stopped.")); return; }
-    const timeout = window.setTimeout(() => {
-      acceptingVoiceAnswer = false;
-      const answer = pendingVoiceAnswer;
-      window.clearTimeout(answer?.silence);
-      pendingVoiceAnswer = null;
-      if (options.finishOnComplete) reject(new Error("Listening timed out. Draft kept; no review or save was triggered."));
-      else if (answer?.parts.length) resolve(answer.parts.join(" "));
-      else reject(new Error("I did not hear anything."));
-    }, options.finishOnComplete ? 300000 : options.collect ? 60000 : 12000);
-
-    pendingVoiceAnswer = { resolve, reject, timeout, collect: options.collect, finishOnComplete: options.finishOnComplete, onTranscript: options.onTranscript, parts: [] };
-    acceptingVoiceAnswer = true;
-  });
-}
-
-async function askOutLoud(question, options = {}) {
-  if (!voiceActive) return "";
-  const retries = options.retries ?? 1;
-
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    if (voiceStopRequested) throw new Error("Voice entry stopped.");
-    const prompt = attempt === 0 ? question : `${question} Please say it again.`;
-    setVoiceStatus(prompt);
-    if (!options.silent) await speak(prompt);
-    setVoiceStatus("Listening...");
-
-    try {
-      const answer = await listenForCurrentPrompt(options);
-      setVoiceStatus(`Heard: ${answer}`);
-      return answer;
-    } catch (error) {
-      if (options.finishOnComplete) throw error;
-      if (voiceStopRequested) {
-        throw new Error("Voice entry stopped.");
-      }
-      const message = error.message || "I did not catch that.";
-      setVoiceStatus(message);
-      if (message.includes("Microphone permission")) {
-        throw error;
-      }
-      if (!options.silent) await speak("I did not catch that.");
-    }
-  }
-
-  throw new Error("I tried twice and did not hear an answer.");
-}
-
-function normalizeSpokenText(text) {
-  return text.trim().replace(/\s+/g, " ");
-}
 
 function parseAppointmentType(answer) {
   const normalized = answer.toLowerCase();
@@ -800,125 +575,13 @@ function parseMileage(answer) {
   return total || /\bzero\b/i.test(answer) ? String(total) : "";
 }
 
-async function runVoiceEntry(mode = "guided") {
-  if (voiceActive) return;
-  if (mode === "guided" && hasDraft() && !confirm("Start a new voice entry and replace the current draft?")) return;
-
-  const SpeechRecognition = getSpeechRecognition();
-  if (!SpeechRecognition || !("speechSynthesis" in window)) {
-    showToast("Voice entry is not available in this browser");
-    setVoiceStatus("Voice entry needs a browser with speech recognition and speech playback.");
-    return;
-  }
-
-  voiceActive = true;
-  voiceStopRequested = false;
-  startVoiceButton.disabled = false;
-  startVoiceButton.textContent = "Stop";
-  document.querySelector("#save-call").disabled = true;
-  document.querySelector("#apply-summary").disabled = true;
-  document.querySelector("#dictate-details").textContent = "Stop listening";
-
-  try {
-    setVoiceStatus("Starting microphone...");
-    const microphone = await startVoiceRecognition();
-    if (voiceStopRequested) throw new Error("Voice entry stopped.");
-    if (!microphone.ok) {
-      const message = microphone.message || "Microphone did not start.";
-      setVoiceStatus(`${message} Check browser microphone permission.`);
-      await speak("Microphone did not start. Please check browser microphone permission.");
-      return;
-    }
-
-    if (mode === "summary") { await completeDictation(); return; }
-    resetForm();
-    setVoiceStatus("Microphone started.");
-
-    contactName.value = normalizeSpokenText(await askOutLoud("Contact name."));
-    appointmentSubject.value = normalizeSpokenText(await askOutLoud("Appointment subject."));
-
-    let appointmentType = "";
-    for (let attempt = 0; attempt < 2 && !appointmentType; attempt++) {
-      const answer = await askOutLoud("Appointment type. Say call or meeting.");
-      appointmentType = parseAppointmentType(answer);
-      if (!appointmentType) {
-        await speak("I did not catch that. Please say call or meeting.");
-      }
-    }
-    if (!appointmentType) throw new Error("Choose call or meeting manually to continue.");
-    setAppointmentType(appointmentType);
-
-    const defaultTime = formatDateTime(appointmentDatetime.value);
-    const useCurrent = await askOutLoud(`Use the current date and time, ${defaultTime}? Say yes or no.`);
-    if (isNo(useCurrent)) {
-      const dateAnswer = await askOutLoud("Please say the appointment date and time.");
-      const parsedDate = parseSpokenDateTime(dateAnswer);
-      if (parsedDate) {
-        appointmentDatetime.value = parsedDate;
-      } else {
-        throw new Error("Date not understood. Enter the date and time manually before saving.");
-      }
-    } else if (!isYes(useCurrent)) {
-      throw new Error("Date not confirmed. Check the date and time before saving.");
-    }
-
-    appointmentEndDatetime.value = appointmentDatetime.value;
-    if (appointmentType !== "Decision-Maker Meeting") mileage.value = "0";
-    if (appointmentType === "Decision-Maker Meeting") {
-      const mileageAnswer = await askOutLoud("Mileage.");
-      mileage.value = parseMileage(mileageAnswer);
-      if (!mileage.value) {
-        await speak("I could not understand the mileage. Please enter it manually before saving.");
-      }
-    }
-
-    appointmentNotes.value = normalizeSpokenText(await askOutLoud("Appointment notes. Pause for four seconds when finished.", { collect: true }));
-
-    const summary = [
-      `Contact ${contactName.value}.`,
-      `Subject ${appointmentSubject.value}.`,
-      `${appointmentType}.`,
-      `Notes ${appointmentNotes.value}.`,
-      "Would you like to save this? Say yes or no.",
-    ].join(" ");
-    const confirmation = await askOutLoud(summary);
-
-    if (isYes(confirmation)) {
-      if (saveCurrentForm()) {
-        setVoiceStatus("Saved.");
-        await speak("Saved.");
-      }
-    } else if (isNo(confirmation)) {
-      setVoiceStatus("Not saved. The form is still filled in.");
-      await speak("Not saved. The form is still filled in.");
-    } else {
-      setVoiceStatus("I did not hear yes or no, so I left the form filled in.");
-      await speak("I did not hear yes or no, so I left the form filled in.");
-    }
-  } catch (error) {
-    const message = error.message || "Voice entry stopped.";
-    setVoiceStatus(message);
-    showToast(message);
-  } finally {
-    stopVoiceRecognition();
-    saveDraft();
-    voiceActive = false;
-    voiceStopRequested = false;
-    startVoiceButton.disabled = false;
-    startVoiceButton.textContent = "Start voice";
-    document.querySelector("#save-call").disabled = false;
-    document.querySelector("#apply-summary").disabled = false;
-    document.querySelector("#dictate-details").textContent = "Dictate details";
-  }
-}
-
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   saveCurrentForm();
 });
 
 resetFormButton.addEventListener("click", () => {
-  if (voiceActive) { stopVoiceEntry(); return; }
+  stopFieldDictation();
   if (hasDraft() && !confirm("Clear this draft? Saved calls are kept.")) return;
   resetForm();
   showToast("Form cleared");
@@ -969,14 +632,6 @@ shareJsonButton.addEventListener("click", async () => {
   }
 });
 
-startVoiceButton.addEventListener("click", () => {
-  if (voiceActive) {
-    stopVoiceEntry();
-    return;
-  }
-  runVoiceEntry();
-});
-
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch(() => {});
@@ -990,6 +645,5 @@ updateMileageVisibility();
 renderCalls();
 showNetworkState();
 if (!getSpeechRecognition()) {
-  startVoiceButton.disabled = true;
-  setVoiceStatus("Guided voice unavailable in this browser. Keyboard dictation is still an option.");
+  setVoiceStatus("Field dictation unavailable in this browser. Keyboard dictation is still an option.");
 }
