@@ -100,6 +100,12 @@ catch { showToast("Contact list could not be read. Reimport it; saved calls are 
 renderDirectory();
 
 function applySpokenSummary(text) {
+  text = text.replace(/\bsave it[.!?\s]*$/i, "").trim();
+  // Expand standalone guide answers only before notes, where they describe the appointment.
+  const notesAt = text.search(/\b(?:appointment notes|notes)\s*:?\s+/i);
+  const head = notesAt < 0 ? text : text.slice(0, notesAt);
+  text = head.replace(/(^|[.!?;]\s*)(meeting|telephone call|conference call)(?=[.!?;]|$)/gi, "$1Type $2")
+    .replace(/(^|[.!?;]\s*)now(?=[.!?;]|$)/gi, "$1Date now") + (notesAt < 0 ? "" : text.slice(notesAt));
   // Explicit spoken labels keep uncertain details out of CRM fields.
   const markers = [...text.matchAll(/(?:^|[.!?;]\s*|\s+)(additional contacts|contact names?|contacts?|appointment subject|subject|appointment type|type|date and time|date|mileage|appointment notes|notes|actions|to do items)\s*:?\s+/gi)];
   const found = {};
@@ -129,7 +135,7 @@ function applySpokenSummary(text) {
 }
 
 async function completeDictation() {
-  const text = await askOutLoud("Describe the appointment. Say contact, subject, type, notes, and actions before each detail. Pause for four seconds when finished.", { collect: true });
+  const text = await askOutLoud("Follow the guide on screen. Say contact name, appointment subject, meeting or telephone call, mileage, now or date and time, and appointment notes. Say save it when finished.", { collect: true, finishOnSave: true });
   summaryField.value = text;
   const found = applySpokenSummary(text);
   if (!contactName.value.trim()) contactName.value = await askOutLoud("Contact name?");
@@ -142,15 +148,36 @@ async function completeDictation() {
   if (new FormData(form).get("appointmentType") === "Decision-Maker Meeting" && !mileage.value) mileage.value = parseMileage(await askOutLoud("What was the mileage?"));
   if (!appointmentNotes.value.trim()) appointmentNotes.value = await askOutLoud("Appointment notes?", { collect: true });
   showContactMatch();
-  const answer = await askOutLoud(`Contact ${contactName.value}. ${additionalContacts.value}. Subject ${appointmentSubject.value}. Date ${formatDateTime(appointmentDatetime.value)}. Notes ${appointmentNotes.value}. Actions ${document.querySelector("#actions").value || "none"}. Save this appointment?`);
-  if (isYes(answer) && saveCurrentForm()) { setVoiceStatus("Saved."); await speak("Saved."); }
-  else setVoiceStatus("Not saved. Review the filled fields.");
+  saveDraft();
+  showDictationReview();
+  setVoiceStatus("Draft ready. Review the log and press Save call.");
+  await speak("Your draft is ready for review. Press Save call when it is correct.");
 }
 
-document.querySelector("#dictate-details").onclick = () => voiceActive ? stopVoiceEntry() : runVoiceEntry("summary");
+function showDictationReview() {
+  const review = document.querySelector("#dictation-review");
+  review.hidden = false;
+  updateDictationReview();
+  review.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function updateDictationReview() {
+  document.querySelector("#review-log").textContent = callToText(createCallFromForm()) + (additionalContacts.value.trim() ? `\nAdditional contacts:\n${additionalContacts.value}` : "");
+}
+form.addEventListener("input", updateDictationReview);
+form.addEventListener("change", updateDictationReview);
+document.querySelector("#dictate-details").onclick = () => {
+  if (voiceActive) { stopVoiceEntry(); return; }
+  const guide = document.querySelector("#dictation-guide");
+  guide.hidden = false;
+  guide.focus({ preventScroll: true });
+  guide.scrollIntoView({ behavior: "smooth", block: "center" });
+  runVoiceEntry("summary");
+};
 document.querySelector("#apply-summary").onclick = () => {
   try {
     applySpokenSummary(summaryField.value);
+    showDictationReview();
     if (!form.reportValidity()) showToast("Complete the highlighted missing field.");
     else showToast("Fields filled. Review before saving.");
   } catch (error) { showToast(error.message); }

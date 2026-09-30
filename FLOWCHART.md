@@ -8,7 +8,8 @@ flowchart TD
     C --> D[Enter contact, optional additional contacts, subject, type, date/time and notes]
     C --> E[Answer spoken questions]
     C --> S[Dictate labeled summary]
-    S --> T[Fill fields and ask for missing details]
+    S --> V[Say save it to prepare draft]
+    V --> T[Fill fields and ask for missing details]
     T --> D
     E --> D
     D --> F{Meeting?}
@@ -16,7 +17,8 @@ flowchart TD
     F -- No --> H[Review details and optional actions]
     G --> H
     H --> U[Confirm contact matches and resolve ambiguous names]
-    U --> I[Save locally on phone]
+    U --> W[Review formatted log and press Save call]
+    W --> I[Save locally on phone]
     I --> J[Review or edit saved calls]
     J --> K[Share or export timestamped JSON]
     K --> L[Transfer to office PC through OneDrive or another approved method]

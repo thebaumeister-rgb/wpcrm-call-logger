@@ -1,6 +1,6 @@
-# Version 16 review and proof
+# Version 17 review and proof
 
-Version 16 adds Papa Parse 5.5.3 (MIT) for CSV contact import, optional local directory matching with ambiguous-name blocking, and contact ID/company exports. Label-based summary dictation fills fields, asks for missing required details and confirms before save. It is not general-purpose AI parsing. Two additional automated checks cover contact import/persistence/matching/export and mocked spoken follow-up flow, bringing the total to 15. Real phone audio and actual WPCRM export headers remain unverified.
+Version 17 adds an on-screen dictation guide, "save it" speech termination and a formatted draft review. Summary dictation never commits records without the Save call button. The 16 automated checks include mocked recognition events proving guide visibility, command removal from notes, local draft persistence and final button-only saving. Earlier checks cover contact import and missing-detail prompts. Parsing remains label-based, not general-purpose AI. Real phone audio and actual WPCRM export headers remain unverified. CSV import uses Papa Parse 5.5.3 (MIT).
 
 Multiple contacts save atomically as separate records with unique IDs and a shared meeting group ID. Blank lines and repeated names are removed. The user confirms the recipients before saving. Mileage is counted only once; later edits are per record. Tests verify draft recovery, cancellation, export structure, mileage and independent editing. There is no automatic WPCRM upload.
 

@@ -213,6 +213,7 @@ function resetForm() {
   document.querySelector("#save-call").textContent = "Save call";
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* Form still works without draft storage. */ }
   form.reset();
+  document.querySelector("#dictation-review").hidden = true;
   document.querySelector("#contact-match").textContent = "";
   contactName.value = "";
   appointmentSubject.value = "";
@@ -536,6 +537,17 @@ function startVoiceRecognition() {
       if (pendingVoiceAnswer.collect) {
         pendingVoiceAnswer.parts.push(transcript);
         window.clearTimeout(pendingVoiceAnswer.silence);
+        if (pendingVoiceAnswer.finishOnSave) {
+          const combined = pendingVoiceAnswer.parts.join(" ");
+          if (/\bsave it[.!?\s]*$/i.test(combined) && !/\b(?:don['’]?t|do not|not)\s+save it[.!?\s]*$/i.test(combined)) {
+            const answer = pendingVoiceAnswer;
+            pendingVoiceAnswer = null;
+            acceptingVoiceAnswer = false;
+            window.clearTimeout(answer.timeout);
+            answer.resolve(combined.replace(/\bsave it[.!?\s]*$/i, "").trim());
+          }
+          return;
+        }
         pendingVoiceAnswer.silence = window.setTimeout(() => {
           if (!pendingVoiceAnswer) return;
           const answer = pendingVoiceAnswer;
@@ -629,7 +641,7 @@ function listenForCurrentPrompt(options = {}) {
       else reject(new Error("I did not hear anything."));
     }, options.collect ? 60000 : 12000);
 
-    pendingVoiceAnswer = { resolve, reject, timeout, collect: options.collect, parts: [] };
+    pendingVoiceAnswer = { resolve, reject, timeout, collect: options.collect, finishOnSave: options.finishOnSave, parts: [] };
     acceptingVoiceAnswer = true;
   });
 }

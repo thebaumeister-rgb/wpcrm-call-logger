@@ -1,12 +1,12 @@
-const CACHE_NAME = "wpcrm-call-logger-v16";
+const CACHE_NAME = "wpcrm-call-logger-v17";
 const ASSETS = [
-  "./entry-tools.js?v=16",
+  "./entry-tools.js?v=17",
   "./papaparse.min.js",
   "./",
   "./index.html",
-  "./styles.css?v=16",
-  "./app.js?v=16",
-  "./manifest.webmanifest?v=16",
+  "./styles.css?v=17",
+  "./app.js?v=17",
+  "./manifest.webmanifest?v=17",
   "./icon-192.png",
   "./icon-512.png",
   "./START-HERE.html",

@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=16">
+    <link rel="manifest" href="manifest.webmanifest?v=17">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=16">
+    <link rel="stylesheet" href="styles.css?v=17">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 16</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 17</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -40,6 +40,11 @@
           <label for="spoken-summary">Spoken summary</label>
           <textarea id="spoken-summary" rows="3" placeholder="Contact Robert Connor. Subject RV16 quote. Type call. Notes Requested pricing. Actions Send quote."></textarea>
           <div class="toolbar"><button type="button" id="dictate-details">Dictate details</button><button type="button" id="apply-summary">Fill fields</button></div>
+          <section id="dictation-guide" hidden aria-label="Dictation guide" tabindex="-1">
+            <h2>Dictation guide</h2>
+            <p>This guide helps you follow a format while dictating.</p>
+            <ol><li>Contact name</li><li>Appointment subject</li><li>Meeting or telephone call</li><li>Mileage</li><li>Say "Now" for the current date and time, or "Date and time" followed by a specific date and time.</li><li>Appointment notes</li><li>Say "save it" to prepare your log for review. Then press Save call.</li></ol>
+          </section>
         </section>
         <section class="field-block">
           <div class="toolbar"><button type="button" id="import-contacts">Import contacts</button><button type="button" id="clear-contacts">Remove contact list</button></div>
@@ -98,6 +103,7 @@
 
         <input type="hidden" name="completed" value="Yes">
 
+        <section id="dictation-review" hidden aria-live="polite"><h2>Review appointment</h2><pre id="review-log" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit"></pre><p>Draft only. Press Save call to save the appointment.</p></section>
         <button class="primary-button" id="save-call" type="submit">Save call</button>
       </form>
 
@@ -124,7 +130,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=16" defer></script>
-    <script src="entry-tools.js?v=16" defer></script>
+    <script src="app.js?v=17" defer></script>
+    <script src="entry-tools.js?v=17" defer></script>
   </body>
 </html>

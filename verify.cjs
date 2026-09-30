@@ -166,14 +166,18 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       const prompts = await p.evaluate(async () => {
         resetForm();
         const prompts = [];
-        const answers = ['Notes Discussed pricing.', 'Robert Connor', 'RV16 quote', 'call', 'yes'];
+        const answers = ['Notes Discussed pricing.', 'Robert Connor', 'RV16 quote', 'call'];
         askOutLoud = async question => { prompts.push(question); if (!answers.length) throw new Error('Unexpected question'); return answers.shift(); };
         speak = async () => {};
         await completeDictation();
         return prompts;
       });
-      assert.equal(prompts.length, 5);
+      assert.equal(prompts.length, 4);
       assert.equal(prompts.some(prompt => prompt === 'Appointment notes?'), false);
+      assert.equal(await p.locator('.call-card').count(), 0);
+      assert.equal(await p.locator('#dictation-review').isVisible(), true);
+      assert.match(await p.locator('#review-log').textContent(), /Discussed pricing/);
+      await p.locator('#save-call').click();
       assert.equal(await p.locator('.call-card').count(), 1);
       assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].appointment_notes), 'Discussed pricing');
       await p.close();
@@ -213,6 +217,33 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await p.waitForFunction(() => document.querySelector('#voice-status').textContent === 'Contact name.');
       await p.locator('#start-voice').click();
       await p.waitForFunction(() => document.querySelector('#start-voice').textContent === 'Start voice');
+      await ctx.close();
+    });
+    await check('On-screen guide and save-it speech command prepare a draft without saving', async () => {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await ctx.addInitScript(() => {
+        window.SpeechRecognition = class { start() { window.mockRecognition = this; setTimeout(() => this.onstart?.(), 0); } abort() {} };
+      });
+      const p = await ctx.newPage();
+      await p.goto(base);
+      await p.evaluate(() => { speak = async () => {}; });
+      await p.locator('#dictate-details').click();
+      await p.waitForFunction(() => acceptingVoiceAnswer);
+      assert.equal(await p.locator('#dictation-guide').isVisible(), true);
+      await p.screenshot({ path: 'proof/dictation-guide.png', fullPage: true });
+      await p.evaluate(() => {
+        const result = [{ transcript: 'Contact name Robert Connor. Appointment subject RV16 quote. Telephone call. Now. Appointment notes Requested pricing. Save it.' }];
+        result.isFinal = true;
+        window.mockRecognition.onresult({ resultIndex: 0, results: [result] });
+      });
+      await p.waitForFunction(() => !voiceActive);
+      assert.equal(await p.locator('#dictation-review').isVisible(), true);
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Requested pricing');
+      assert.equal(await p.locator('.call-card').count(), 0);
+      assert.match(await p.evaluate(() => localStorage.getItem('wpcrm-call-draft-v1')), /Requested pricing/);
+      await p.screenshot({ path: 'proof/dictation-review.png', fullPage: true });
+      await p.locator('#save-call').click();
+      assert.equal(await p.locator('.call-card').count(), 1);
       await ctx.close();
     });
     assert.deepEqual(errors, []);
