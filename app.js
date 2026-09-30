@@ -654,7 +654,7 @@ async function askOutLoud(question, options = {}) {
     if (voiceStopRequested) throw new Error("Voice entry stopped.");
     const prompt = attempt === 0 ? question : `${question} Please say it again.`;
     setVoiceStatus(prompt);
-    await speak(prompt);
+    if (!options.silent) await speak(prompt);
     setVoiceStatus("Listening...");
 
     try {
@@ -670,7 +670,7 @@ async function askOutLoud(question, options = {}) {
       if (message.includes("Microphone permission")) {
         throw error;
       }
-      await speak("I did not catch that.");
+      if (!options.silent) await speak("I did not catch that.");
     }
   }
 

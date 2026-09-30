@@ -1,6 +1,8 @@
-# Version 17 review and proof
+# Version 18 review and proof
 
-Version 17 adds an on-screen dictation guide, "save it" speech termination and a formatted draft review. Summary dictation never commits records without the Save call button. The 16 automated checks include mocked recognition events proving guide visibility, command removal from notes, local draft persistence and final button-only saving. Earlier checks cover contact import and missing-detail prompts. Parsing remains label-based, not general-purpose AI. Real phone audio and actual WPCRM export headers remain unverified. CSV import uses Papa Parse 5.5.3 (MIT).
+The guide narration and its no-input retry narration are disabled in summary dictation. Missing-detail prompts remain enabled. The mocked-recognition test asserts that no speech plays before the initial dictation answer.
+
+Version 18 adds an on-screen dictation guide, "save it" speech termination and a formatted draft review. Summary dictation never commits records without the Save call button. The 16 automated checks include mocked recognition events proving guide visibility, command removal from notes, local draft persistence and final button-only saving. Earlier checks cover contact import and missing-detail prompts. Parsing remains label-based, not general-purpose AI. Real phone audio and actual WPCRM export headers remain unverified. CSV import uses Papa Parse 5.5.3 (MIT).
 
 Multiple contacts save atomically as separate records with unique IDs and a shared meeting group ID. Blank lines and repeated names are removed. The user confirms the recipients before saving. Mileage is counted only once; later edits are per record. Tests verify draft recovery, cancellation, export structure, mileage and independent editing. There is no automatic WPCRM upload.
 

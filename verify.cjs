@@ -226,10 +226,11 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       });
       const p = await ctx.newPage();
       await p.goto(base);
-      await p.evaluate(() => { speak = async () => {}; });
+      await p.evaluate(() => { window.spokenPrompts = []; speak = async (text) => { window.spokenPrompts.push(text); }; });
       await p.locator('#dictate-details').click();
       await p.waitForFunction(() => acceptingVoiceAnswer);
       assert.equal(await p.locator('#dictation-guide').isVisible(), true);
+      assert.deepEqual(await p.evaluate(() => window.spokenPrompts), []);
       await p.screenshot({ path: 'proof/dictation-guide.png', fullPage: true });
       await p.evaluate(() => {
         const result = [{ transcript: 'Contact name Robert Connor. Appointment subject RV16 quote. Telephone call. Now. Appointment notes Requested pricing. Save it.' }];
