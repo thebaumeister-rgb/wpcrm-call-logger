@@ -1,4 +1,6 @@
-# WPCRM Call Logger - Version 25
+# WPCRM Call Logger - Version 26
+
+Text fields now show provisional words as the recognizer supplies them and replace those words with corrections, rather than appending duplicates. Stop keeps the currently visible text for review. For dates, mileage and choices, provisional speech appears in the microphone panel and the field is updated after recognition finalizes a valid value. Recognition speed depends on the phone/browser and connection. The suite now includes 19 checks.
 
 Record appointment details on your phone and export them for a separate supervised WPCRM entry workflow. There is no automatic CRM or OneDrive connection.
 

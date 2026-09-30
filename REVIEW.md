@@ -1,4 +1,6 @@
-# Version 25 Review And Proof
+# Version 26 Review And Proof
+
+Live interim speech is enabled. A replaceable text insertion preserves earlier final segments while provisional text changes; finalized result indices are processed once. Stop keeps the visible preview, and trusted keyboard input stops dictation to avoid overwriting manual edits. Structured-field previews stay in the floating panel until valid final recognition. A new test covers immediate provisional text, correction, repeated final results, multiple segments and Stop retention (19 checks total).
 
 The UI is now a single entry form. Spoken summary, dictation guide, Dictate Details and question-by-question voice entry were removed at the user's request.
 

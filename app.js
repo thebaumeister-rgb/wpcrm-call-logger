@@ -1,4 +1,4 @@
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
