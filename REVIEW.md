@@ -1,6 +1,8 @@
-# Version 27 Review And Proof
+# Version 28 Review And Proof
 
-Latest fixes: no-speech and normal onend events schedule a fresh recognizer instead of closing the field session. Stop cancels startup and restart timers and invalidates old callbacks. There is no duration cutoff. Empty restarts use bounded backoff to prevent rapid restart loops. Permission, network and startup failures remain explicit stops. Each recognition snapshot replaces the run's text; short cumulative contact-name prefixes are merged, while repeated note words remain. Two added tests cover repeated silence/restart, stopping a queued restart, late callbacks, corrected final snapshots and intentional repetition (21 checks total). Real Android service timing/beeps still require a phone trial.
+Version 27 passed simulated tests but the user reported severe sentence duplication on their phone. Version 28 merges matching multiword transcript boundaries, both within result snapshots and across automatic restarts. It also recognizes shorter replay prefixes. It does not deduplicate existing manual text or rewrite saved entries. Intentional single-word repetition in notes and repetition inside one transcript remain intact. Intentional multiword repetition across result boundaries is ambiguous and may be merged; review before saving.
+
+The 23-check suite includes cumulative sentence expansion, repeated restart replay, interim replay prefixes, distinct new sentences, existing manual text, internal repeated words, Stop cancellation and stale callbacks. These are simulated recognition events, not physical Android microphone acceptance testing. Real phone behavior remains unverified.
 
 Live interim speech is enabled. A replaceable text insertion preserves earlier final segments while provisional text changes; finalized result indices are processed once. Stop keeps the visible preview, and trusted keyboard input stops dictation to avoid overwriting manual edits. Structured-field previews stay in the floating panel until valid final recognition. A new test covers immediate provisional text, correction, repeated final results, multiple segments and Stop retention (19 checks total).
 

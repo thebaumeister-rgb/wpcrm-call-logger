@@ -216,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="27"', 'name="app-version" content="28"').replace('Version 27', 'Version 28');
+      const future = html.replace('name="app-version" content="28"', 'name="app-version" content="29"').replace('Version 28', 'Version 29');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -225,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=28&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=29&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=28&reload=*');
+      await p.waitForURL('**/index.html?v=29&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -406,6 +406,60 @@ async function saveForm(page) {
       });
       assert.equal(await p.locator('#appointment-notes').inputValue(), 'Very very important');
       await ctx.close();
+    });
+    await check('Cumulative sentences and restart replays do not multiply live notes', async () => {
+      const ctx = await browser.newContext();
+      await ctx.addInitScript(() => {
+        window.starts = 0;
+        window.SpeechRecognition = class {
+          start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); }
+          abort() {}
+        };
+      });
+      const p = await ctx.newPage(); await p.goto(base);
+      await p.locator('#appointment-notes').fill('Existing manual note.');
+      await p.locator('#appointment-notes').click();
+      await p.evaluate(() => {
+        stopFieldDictation();
+        const target = document.querySelector('#appointment-notes');
+        target.setSelectionRange(target.value.length, target.value.length);
+        startFieldDictation(target);
+      });
+      const emit = rows => p.evaluate(rows => {
+        const results = rows.map(([text, final]) => { const result = [{ transcript: text }]; result.isFinal = final; return result; });
+        currentRecognition.onresult({ resultIndex: results.length - 1, results });
+      }, rows);
+      const sentence = 'Robert requested a valve quote.';
+      await emit([[sentence, true], [sentence, false]]);
+      await emit([[sentence, true], [sentence + ' Send it tomorrow.', true]]);
+      const expected = 'Existing manual note. ' + sentence + ' Send it tomorrow.';
+      assert.equal(await p.locator('#appointment-notes').inputValue(), expected);
+      for (let count = 0; count < 3; count++) {
+        const starts = await p.evaluate(() => { const starts = window.starts; currentRecognition.onend(); return starts; });
+        await p.waitForFunction(starts => window.starts > starts, starts);
+        await emit([['Robert requested', false]]);
+        assert.equal(await p.locator('#appointment-notes').inputValue(), expected);
+        await emit([[sentence + ' Send it tomorrow.', true]]);
+        assert.equal(await p.locator('#appointment-notes').inputValue(), expected);
+      }
+      await emit([[sentence + ' Send it tomorrow.', true], ['Tomorrow we will review availability.', true]]);
+      assert.equal(await p.locator('#appointment-notes').inputValue(), expected + ' Tomorrow we will review availability.');
+      await p.locator('#stop-field-microphone').click();
+      assert.equal(await p.locator('.call-card').count(), 0);
+      await ctx.close();
+    });
+    await check('Boundary replay matching keeps distinct sentences and internal repeated words', async () => {
+      const p = await browser.newPage(); await p.goto(base);
+      const values = await p.evaluate(() => [
+        combineSpeechParts(['Discussed pricing and delivery.', 'Pricing and delivery will be confirmed.'], false),
+        combineSpeechParts(['Very', 'very important.'], false),
+        combineSpeechParts(['Please repeat: send it now, send it now.'], false),
+        combineSpeechParts(['We discussed pricing.', 'We discussed delivery.'], false),
+        combineSpeechParts(['Robert', 'Robert Connor'], true)
+      ]);
+      assert.deepEqual(values, ['Discussed pricing and delivery. will be confirmed.', 'Very very important.',
+        'Please repeat: send it now, send it now.', 'We discussed pricing. We discussed delivery.', 'Robert Connor']);
+      await p.close();
     });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));

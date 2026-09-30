@@ -70,8 +70,24 @@ function writeFieldSpeech(target, text) {
 function combineSpeechParts(parts, contactNameField) {
   return parts.filter(Boolean).reduce((combined, part) => {
     const value = part.trim();
-    // Some recognizers expand a short name in the following result instead of revising its index.
-    if (contactNameField && combined && value.toLowerCase().startsWith(combined.toLowerCase() + " ")) return value;
+    if (!combined) return value;
+    // Android can replay cumulative text at a new result index or after a restart.
+    // Match only the adjoining boundary, never remove repetition inside an utterance.
+    const words = text => Array.from(text.matchAll(/\S+/g), match => ({
+      key: match[0].toLocaleLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""),
+      end: match.index + match[0].length
+    }));
+    const previous = words(combined), incoming = words(value);
+    const minimum = contactNameField ? 1 : 2;
+    for (let size = Math.min(previous.length, incoming.length); size >= minimum; size--) {
+      if (incoming.slice(0, size).every((word, index) => word.key && word.key === previous[previous.length - size + index].key)) {
+        const remainder = value.slice(incoming[size - 1].end).trim();
+        return remainder ? combined + " " + remainder : combined;
+      }
+    }
+    // A replay can first arrive as a shorter interim prefix of the previous text.
+    if (incoming.length >= minimum && incoming.length < previous.length &&
+        incoming.every((word, index) => word.key && word.key === previous[index].key)) return combined;
     return combined ? combined + " " + value : value;
   }, "");
 }

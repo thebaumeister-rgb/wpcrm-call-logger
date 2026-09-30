@@ -1,6 +1,8 @@
-# WPCRM Call Logger - Version 27
+# WPCRM Call Logger - Version 28
 
-Pauses no longer end the field session: normal recognizer endings and no-speech events resume automatically while the app is visible. The Stop button remains available, and there is no five-minute app cutoff. Stop cancels pending restarts. Saving, switching fields, disabling dictation, typing, leaving the app, permission errors and other fatal microphone errors still end or switch listening. Android may beep when its speech service restarts. Recognition snapshots replace earlier text instead of repeatedly appending first words; cumulative contact-name expansions are merged while intentional repetition in notes is preserved. The suite now has 21 checks.
+Version 28 addresses cumulative sentence replay, including replay after automatic microphone restarts. Matching text at transcript boundaries is merged rather than appended again. Single repeated words in notes and repetitions inside one transcript are preserved. The speech service does not identify intentional repetition versus replay: repeating the same multiword phrase at a result boundary can be merged. Review before saving. Previously saved entries are not rewritten.
+
+Pauses resume listening while the app is visible. Stop cancels pending restarts. Saving, switching fields, disabling dictation, typing, leaving the app, permission errors and other fatal microphone errors still end or switch listening. Android may beep when its speech service restarts. The suite has 23 checks; real phone microphone behavior still requires an on-device trial.
 
 Text fields now show provisional words as the recognizer supplies them and replace those words with corrections, rather than appending duplicates. Stop keeps the currently visible text for review. For dates, mileage and choices, provisional speech appears in the microphone panel and the field is updated after recognition finalizes a valid value. Recognition speed depends on the phone/browser and connection. The suite now includes 19 checks.
 
