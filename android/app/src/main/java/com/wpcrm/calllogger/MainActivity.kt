@@ -25,8 +25,6 @@ import java.io.File
 class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var speech: OfflineSpeech
-    private lateinit var onlineSpeech: OnlineSpeech
-    private var onlineMode = false
     private var pendingMic: String? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var exportContents: String? = null
@@ -63,7 +61,6 @@ class MainActivity : Activity() {
             }
         }
         speech = OfflineSpeech(this, speechEvent)
-        onlineSpeech = OnlineSpeech(this, speechEvent)
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
         web.settings.apply {
@@ -117,13 +114,9 @@ class MainActivity : Activity() {
             (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Call log", text))
             toast("Latest call copied")
         }
-        @JavascriptInterface fun start(id: String) = requestMicrophone(id, false)
-        @JavascriptInterface fun startOnline(id: String) = requestMicrophone(id, true)
-        private fun requestMicrophone(id: String, online: Boolean) = runOnUiThread {
+        @JavascriptInterface fun start(id: String) = runOnUiThread {
             if (!foreground || id.length > 80) return@runOnUiThread
             speech.stop(false)
-            onlineSpeech.stop(false)
-            onlineMode = online
             pendingMic = id
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 permissionPending = true
@@ -132,7 +125,7 @@ class MainActivity : Activity() {
         }
         @JavascriptInterface fun stop(id: String, finish: Boolean) = runOnUiThread {
             if (id == pendingMic) {
-                if (onlineMode) onlineSpeech.stop(finish) else speech.stop(finish)
+                speech.stop(finish)
                 if (!finish) { pendingMic = null; permissionPending = false }
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
@@ -165,7 +158,7 @@ class MainActivity : Activity() {
     private fun startMicrophone(id: String) {
         permissionPending = false
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (onlineMode) onlineSpeech.start(id) else speech.start(id)
+        speech.start(id)
     }
     override fun onRequestPermissionsResult(code: Int, permissions: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(code, permissions, results)
@@ -211,12 +204,11 @@ class MainActivity : Activity() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             web.evaluateJavascript("window.stopFieldDictation?.('Microphone stopped while app is in background. Your entry is kept.')", null)
             speech.stop(false)
-            onlineSpeech.stop(false)
             pendingMic = null
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
         super.onPause()
     }
-    override fun onDestroy() { destroyed = true; speech.close(); onlineSpeech.stop(false); web.destroy(); super.onDestroy() }
+    override fun onDestroy() { destroyed = true; speech.close(); web.destroy(); super.onDestroy() }
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
 }

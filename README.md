@@ -1,10 +1,10 @@
-# WPCRM Call Logger - Version 31 Android Preview
+# WPCRM Call Logger - Version 32 Android Preview
 
-Version 31 adds a top Online voice recognition checkbox. Unchecked uses bundled on-device speech; checked, after consent, uses Android's online-capable speech provider (or browser speech on supported browsers). Every fresh launch defaults to online, with consent before the first online dictation. Switching stops capture but keeps entered text. There is no automatic fallback. Online mode requires connectivity and may send audio to the provider under its policies. It may beep or end after silence; tap the field again, rather than an automatic restart loop. Provider accuracy and availability vary; EXTRA_PREFER_OFFLINE=false does not force a provider to use cloud processing.
+Version 32 removes app-managed online speech. Keyboard entry is the default, including the phone keyboard's own microphone. Optional Offline voice recognition enables field-tap capture using the bundled model; it starts unchecked on each launch. Start and end date/time default to the current local time on launch and after Save/Clear. Manual time edits are preserved when saving or editing records.
 
 Version 30 formats new uppercase dictation locally: title case for contact names, sentence case for subjects/notes/actions, and unchanged letter-number identifiers such as RV16-26A. Common technical acronyms stay uppercase. Exact imported contact matches keep their verified spelling. Typed text and saved history are not reformatted. Unusual names, acronyms and speech-recognition mistakes still need review; no online language service is used.
 
-In on-device mode, the Android APK uses its bundled English speech model locally. It has no INTERNET permission, no app account, no automatic cloud fallback, and no model download at first launch. Online recognition delegates to the separate Android speech service, which has its own networking and privacy policy. ACCESS_NETWORK_STATE checks connectivity before starting online speech. Native on-device AudioRecord stays open through pauses; only the speech decoder segments phrases. Stop flushes the last words for review. The native path preserves repeated phrases rather than applying the old replay-removal heuristic.
+The Android APK includes its English speech model. Offline recognition processes audio locally and keeps capture open through pauses until Stop or an interruption. No online speech bridge, Android speech provider, network-state permission or automatic cloud fallback remains. The app has no INTERNET permission.
 
 Keep the app visible while recording. Stop, switching fields, saving, typing, backgrounding or a microphone interruption end or switch capture. There is no silence-driven microphone restart loop. Real Samsung acoustic accuracy and long-pause behavior require a phone acceptance test; preview status is deliberate.
 
@@ -16,22 +16,22 @@ Record appointment details on your phone and export them for a separate supervis
 
 Install the signed Android APK from https://github.com/thebaumeister-rgb/wpcrm-call-logger/releases . See [Android installation, migration and build instructions](android/README.md). Back up existing browser calls using Export JSON, then Import saved calls in WPCRM Offline. Import your contact directory separately. Do not delete the old app until migration is verified.
 
-The browser edition supports typing, imports and exports; online voice requires explicit opt-in and a supported browser. It does not offer bundled offline speech. The APK is Android only, not an iPhone installer. Android Check for updates opens GitHub externally, requiring a connection; install a newer APK over the existing app without uninstalling. The browser update button still compares page versions before reloading.
+The browser edition supports typing, keyboard dictation, imports and exports, but not bundled offline speech. Android updates require installing the newer signed APK over the existing app without uninstalling.
 
 ## Enter A Call
 
 The screen is a single list: Name, Add name, Subject, Time - Start, Time - End, Status, Purpose, Mileage, Notes, and optional Actions.
 
-Dictate on field tap is enabled by default:
+Keyboard entry is the default. Check Offline voice recognition to enable field-tap dictation:
 1. Tap a field. Allow microphone access if asked.
 2. Say its value, without saying the field label.
 3. A floating Stop button appears while the microphone starts or listens.
 4. Tap Stop to stop listening, or tap another field to move dictation there.
 5. Review the fields, make corrections, and press Save.
 
-The spoken-summary box, guide, Dictate Details and Start voice buttons remain removed. No spoken completion command is needed. Stop never saves or clears the call. Scrolling and silence do not stop on-device capture. Online speech may end at pauses. App hiding or a microphone error stops capture; tap a field to resume.
+The spoken-summary box, guide, Dictate Details and Start voice buttons remain removed. No spoken completion command is needed. Stop never saves or clears the call. Scrolling and silence do not stop on-device capture. App hiding or a microphone error stops capture; tap a field to resume.
 
-Turn Dictate on field tap off for typing. Third-party keyboard dictation has its own privacy/connectivity requirements and is not part of this app's offline guarantee. Text is inserted at the cursor or replaces selected text. After pressing Stop, wait for final words before saving.
+Uncheck Offline voice recognition for typing or phone-keyboard dictation. Third-party keyboard dictation has its own privacy/connectivity requirements and is not part of this app's offline guarantee. Text is inserted at the cursor or replaces selected text. After pressing Stop, wait for final words before saving.
 
 For Start time, say Now to set start and end to now, or Now minus three for start three hours ago and end now. A full explicit range can also be spoken: start September 29 2026 at 9:00 AM end September 29 2026 at 10:30 AM. End time can be edited separately. Unrecognized values leave existing field contents intact. Check dates before saving.
 

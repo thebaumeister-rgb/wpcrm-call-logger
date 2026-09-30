@@ -47,7 +47,7 @@ async function saveForm(page) {
       await page.locator('#contact-name').fill('Unfinished draft');
       await page.reload();
       assert.equal(await page.locator('#contact-name').inputValue(), '');
-      assert.equal(await page.locator('#appointment-datetime').inputValue(), '');
+      assert.equal(await page.locator('#appointment-datetime').inputValue(), await page.evaluate(() => nowForInput()));
       assert.equal(await page.locator('input[name="appointmentType"]:checked').count(), 0);
       assert.equal(await page.locator('[placeholder]').count(), 0);
       assert.equal(await page.locator('.call-card').count(), 1);
@@ -134,7 +134,7 @@ async function saveForm(page) {
     });
     await check('Contact CSV import, persistence, matching, ambiguous names and export IDs', async () => {
       const p = await browser.newPage();
-      await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#contacts-file').setInputFiles({ name: 'contacts.csv', mimeType: 'text/csv', buffer: Buffer.from('Contact Name,Company,Contact ID\n"Robert Connor","Acme, Inc",42\nAlex Smith,One,43\nAlex Smith,Two,44') });
       await p.waitForFunction(() => document.querySelector('#contacts-status').textContent.includes('3 contacts'));
@@ -206,7 +206,7 @@ async function saveForm(page) {
     await context.close();
     await check('Update button verifies server version, preserves canceled entry and reloads on approval', async () => {
       const ctx = await browser.newContext({ serviceWorkers: 'block' });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#check-update').click();
       await p.waitForFunction(() => document.querySelector('#update-status').textContent.includes('is up to date'));
       await p.locator('#contact-name').fill('Saved update test');
@@ -216,7 +216,7 @@ async function saveForm(page) {
       const saved = await p.evaluate(() => getJsonExport());
       await p.locator('#contact-name').fill('Unfinished entry');
       const html = await (await ctx.request.get(base + '/index.html')).text();
-      const future = html.replace('name="app-version" content="31"', 'name="app-version" content="32"').replace('Version 31', 'Version 32');
+      const future = html.replace('name="app-version" content="32"', 'name="app-version" content="33"').replace('Version 32', 'Version 33');
       await p.route('**/index.html?update-check=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       let warning = '';
       p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
@@ -225,10 +225,10 @@ async function saveForm(page) {
       assert.match(warning, /unfinished entry will be cleared/);
       assert.equal(await p.locator('#contact-name').inputValue(), 'Unfinished entry');
       assert.equal(await p.locator('#reload-app').isVisible(), true);
-      await p.route('**/index.html?v=32&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await p.route('**/index.html?v=33&reload=*', route => route.fulfill({ contentType: 'text/html', body: future }));
       p.once('dialog', dialog => dialog.accept());
       await p.locator('#reload-app').click();
-      await p.waitForURL('**/index.html?v=32&reload=*');
+      await p.waitForURL('**/index.html?v=33&reload=*');
       assert.equal(await p.locator('#contact-name').inputValue(), '');
       assert.deepEqual(await p.evaluate(() => JSON.parse(getJsonExport())), JSON.parse(saved));
       await p.unroute('**/index.html?update-check=*');
@@ -251,7 +251,7 @@ async function saveForm(page) {
           abort() { this.aborted = true; }
         };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       assert.equal(await p.locator('#spoken-summary, #dictation-guide, #dictate-details, #start-voice').count(), 0);
       assert.equal(await p.locator('#dictate-on-tap').isChecked(), true);
       await p.locator('#contact-name').click();
@@ -291,7 +291,7 @@ async function saveForm(page) {
       await ctx.close();
     });
     await check('Typed field speech values, time ranges, status, purpose and invalid values', async () => {
-      const p = await browser.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await browser.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       const values = await p.evaluate(() => {
         writeFieldSpeech(appointmentDatetime, 'Now minus three');
         writeFieldSpeech(appointmentStatus, 'Open');
@@ -311,7 +311,7 @@ async function saveForm(page) {
     await check('Field microphone stops during startup and on permission error', async () => {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.testRecognition = this; } abort() {} }; });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#contact-name').click();
       await p.locator('#stop-field-microphone').click();
       assert.equal(await p.evaluate(() => fieldSession), null);
@@ -325,7 +325,7 @@ async function saveForm(page) {
     await check('Interim speech appears immediately, corrects without duplication and survives Stop', async () => {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.liveRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#contact-name').click();
       assert.equal(await p.evaluate(() => liveRecognition.interimResults), true);
       const emit = async rows => p.evaluate(rows => {
@@ -359,7 +359,7 @@ async function saveForm(page) {
         window.starts = 0;
         window.OfflineSpeechRecognition = class { start() { window.currentRecognition = this; window.starts++; queueMicrotask(() => this.onstart?.()); } abort() {} };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#contact-name').click();
       await p.evaluate(() => {
         const result = [{ transcript: 'Robert' }]; result.isFinal = true;
@@ -390,7 +390,7 @@ async function saveForm(page) {
     await check('Revised final snapshots replace earlier text and preserve intentional note repetition', async () => {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => { window.OfflineSpeechRecognition = class { start() { window.currentRecognition = this; queueMicrotask(() => this.onstart?.()); } abort() {} }; });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#contact-name').click();
       await p.evaluate(() => {
         for (const text of ['Robert', 'Robert Connor', 'Robert Connor']) {
@@ -416,7 +416,7 @@ async function saveForm(page) {
           abort() {}
         };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#appointment-notes').fill('Existing manual note.');
       await p.locator('#appointment-notes').click();
       await p.evaluate(() => {
@@ -449,7 +449,7 @@ async function saveForm(page) {
       await ctx.close();
     });
     await check('Boundary replay matching keeps distinct sentences and internal repeated words', async () => {
-      const p = await browser.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await browser.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       const values = await p.evaluate(() => [
         combineSpeechParts(['Discussed pricing and delivery.', 'Pricing and delivery will be confirmed.'], false),
         combineSpeechParts(['Very', 'very important.'], false),
@@ -471,7 +471,7 @@ async function saveForm(page) {
           exportFile() {}, openUpdates() {}
         };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.locator('#appointment-notes').click();
       const emit = (text, final = false) => p.evaluate(({ text, final }) => {
         receiveOfflineSpeech({ id: nativeStarts.at(-1), type: 'result', text, final });
@@ -499,7 +499,7 @@ async function saveForm(page) {
         window.OfflineAndroid = { start() {}, stop() {}, openUpdates() {}, exportFile(...args) { exports.push(args); } };
         window.SpeechRecognition = class { constructor() { throw new Error('Cloud recognizer must never run'); } };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       await p.evaluate(() => {
         calls = [{ id: 'offline-test', contact_name: 'Test contact' }];
         shareJsonExport(); downloadFile('test.json', getJsonExport(), 'application/json');
@@ -509,9 +509,9 @@ async function saveForm(page) {
       assert.equal(exports[0][3], true); assert.equal(exports[1][3], false);
       assert.equal(JSON.parse(exports[0][1])[0].contact_name, 'Test contact');
       await ctx.close();
-      const browserPage = await browser.newPage(); await browserPage.goto(base); await browserPage.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const browserPage = await browser.newPage(); await browserPage.goto(base); await browserPage.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       assert.equal(await browserPage.locator('#dictate-on-tap').isDisabled(), true);
-      assert.match(await browserPage.locator('#voice-status').textContent(), /On-device recognition requires/);
+      assert.match(await browserPage.locator('#voice-status').textContent(), /Offline dictation requires/);
       await browserPage.close();
     });
     await check('Offline capitalization formats names and sentences while preserving identifiers and manual text', async () => {
@@ -522,7 +522,7 @@ async function saveForm(page) {
           stop() {}, exportFile() {}, openUpdates() {}
         };
       });
-      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#online-speech"); mode.checked = false; mode.dispatchEvent(new Event("change")); });
+      const p = await ctx.newPage(); await p.goto(base); await p.evaluate(() => { const mode = document.querySelector("#dictate-on-tap"); if (!mode.disabled) mode.checked = true; });
       const emit = (text, final = false) => p.evaluate(({ text, final }) => receiveOfflineSpeech({ id: activeId, type: 'result', text, final }), { text, final });
       await p.locator('#contact-name').click();
       await emit('ROBERT'); await emit('ROBERT CONNOR', true);
@@ -554,71 +554,38 @@ async function saveForm(page) {
         "I'm sending the PDF. Please review it.", 'Keep iPhone and eBay', 'Keep eBay spelling: quote RV16-26A and D05']);
       await ctx.close();
     });
-    await check('Online defaults with consent, switches engines, keeps text and ignores late callbacks', async () => {
+    await check('Keyboard mode defaults, offline field taps opt in, and entry times are editable', async () => {
       const ctx = await browser.newContext();
       await ctx.addInitScript(() => {
-        window.engineStarts = []; window.engineStops = [];
-        window.OfflineAndroid = {
-          start(id) { engineStarts.push({ id, online: false }); queueMicrotask(() => receiveOfflineSpeech({ id, type: 'start' })); },
-          startOnline(id) { engineStarts.push({ id, online: true }); queueMicrotask(() => receiveOfflineSpeech({ id, type: 'start' })); },
-          stop(id, finish) { engineStops.push({ id, finish }); }, exportFile() {}, openUpdates() {}
-        };
+        window.starts = 0;
+        window.SpeechRecognition = class { constructor() { throw new Error('Online speech removed'); } };
+        window.OfflineAndroid = { start(id) { starts++; queueMicrotask(() => receiveOfflineSpeech({ id, type: 'start' })); }, stop() {}, exportFile() {}, openUpdates() {} };
+        localStorage.setItem('wpcrm-dictate-on-tap', 'true');
       });
       const p = await ctx.newPage(); await p.goto(base);
-      assert.equal(await p.locator('#online-speech').isChecked(), true);
-      p.once('dialog', dialog => dialog.dismiss());
+      assert.equal(await p.locator('#online-speech').count(), 0);
+      assert.equal(await p.locator('#dictate-on-tap').isChecked(), false);
       await p.locator('#contact-name').click();
-      assert.equal(await p.evaluate(() => engineStarts.length), 0);
-      await p.locator('#online-speech').uncheck();
+      assert.equal(await p.evaluate(() => starts), 0);
+      assert.equal(await p.locator('#appointment-datetime').inputValue(), await p.evaluate(() => nowForInput()));
+      assert.equal(await p.locator('#appointment-end-datetime').inputValue(), await p.locator('#appointment-datetime').inputValue());
+      await p.locator('#appointment-datetime').fill('2026-09-29T09:00');
+      await p.locator('#appointment-end-datetime').fill('2026-09-29T10:00');
+      await p.locator('#contact-name').fill('Manual test');
+      await p.locator('#appointment-subject').fill('Time test');
+      await p.locator('#appointment-notes').fill('Manual note');
+      await saveForm(p);
+      const saved = await p.evaluate(() => JSON.parse(getJsonExport())[0]);
+      assert.equal(saved.appointment_datetime, '2026-09-29T09:00');
+      assert.equal(saved.appointment_end_datetime, '2026-09-29T10:00');
+      assert.equal(await p.locator('#appointment-datetime').inputValue(), await p.evaluate(() => nowForInput()));
+      await p.locator('#dictate-on-tap').check();
       await p.locator('#contact-name').click();
-      assert.equal(await p.evaluate(() => engineStarts.at(-1).online), false);
-      p.once('dialog', dialog => dialog.dismiss());
-      await p.locator('#online-speech').click();
-      assert.equal(await p.locator('#online-speech').isChecked(), false);
-      p.once('dialog', dialog => dialog.accept());
-      await p.locator('#online-speech').check();
-      await p.locator('#contact-name').click();
-      assert.equal(await p.evaluate(() => engineStarts.at(-1).online), true);
-      await p.evaluate(() => {
-        const id = engineStarts.at(-1).id;
-        receiveOfflineSpeech({ id, type: 'result', text: 'Robert', final: false });
-        receiveOfflineSpeech({ id, type: 'result', text: 'Robert Connor', final: false });
-        receiveOfflineSpeech({ id, type: 'result', text: 'Robert Connor', final: true });
-        receiveOfflineSpeech({ id, type: 'end' });
-      });
-      assert.equal(await p.locator('#contact-name').inputValue(), 'Robert Connor');
-      await p.waitForTimeout(500);
-      assert.equal(await p.evaluate(() => engineStarts.length), 2);
+      assert.equal(await p.evaluate(() => starts), 1);
+      await p.locator('#dictate-on-tap').uncheck();
+      assert.equal(await p.locator('#field-microphone').isHidden(), true);
       await p.locator('#appointment-notes').click();
-      await p.locator('#online-speech').uncheck();
-      await p.evaluate(() => receiveOfflineSpeech({ id: engineStarts.at(-1).id, type: 'result', text: 'Late online text', final: true }));
-      assert.equal(await p.locator('#appointment-notes').inputValue(), '');
-      await p.locator('#appointment-notes').click();
-      assert.equal(await p.evaluate(() => engineStarts.at(-1).online), false);
-      await p.locator('#online-speech').check();
-      await p.reload();
-      assert.equal(await p.locator('#online-speech').isChecked(), true);
-      await ctx.close();
-    });
-    await check('Browser online speech requires consent and stops without restart loops', async () => {
-      const ctx = await browser.newContext();
-      await ctx.addInitScript(() => {
-        window.cloudStarts = 0;
-        window.SpeechRecognition = class {
-          start() { window.cloudStarts++; window.cloud = this; queueMicrotask(() => this.onstart?.()); }
-          abort() {}
-        };
-      });
-      const p = await ctx.newPage(); await p.goto(base);
-      assert.equal(await p.locator('#dictate-on-tap').isDisabled(), false);
-      p.once('dialog', dialog => dialog.accept());
-      await p.locator('#contact-name').click();
-      await p.evaluate(() => cloud.onend());
-      await p.waitForTimeout(500);
-      assert.equal(await p.evaluate(() => cloudStarts), 1);
-      await ctx.setOffline(true);
-      await p.locator('#contact-name').click();
-      assert.equal(await p.evaluate(() => cloudStarts), 1);
+      assert.equal(await p.evaluate(() => starts), 1);
       await ctx.close();
     });
     assert.deepEqual(errors, []);

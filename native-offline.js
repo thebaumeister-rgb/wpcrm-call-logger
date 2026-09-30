@@ -1,15 +1,14 @@
-/* Only the installed Android package exposes this bridge. Online speech is explicit opt-in. */
+/* Only the installed Android package exposes this local speech bridge. */
 (() => {
   if (!window.OfflineAndroid) return;
   let nextId = 0;
   const sessions = new Map();
   window.receiveOfflineSpeech = message => sessions.get(message.id)?.receive(message);
   window.OfflineSpeechRecognition = class {
-    constructor() { this.native = true; this.offline = !document.querySelector('#online-speech')?.checked; this.results = []; this.id = String(++nextId); }
+    constructor() { this.native = true; this.offline = true; this.results = []; this.id = String(++nextId); }
     start() {
       sessions.set(this.id, this);
-      if (this.offline) OfflineAndroid.start(this.id);
-      else OfflineAndroid.startOnline(this.id);
+      OfflineAndroid.start(this.id);
     }
     abort() { sessions.delete(this.id); OfflineAndroid.stop(this.id, false); }
     finish() { this.finishing = true; OfflineAndroid.stop(this.id, true); }

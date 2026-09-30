@@ -3,15 +3,8 @@ const fieldMicrophone = document.querySelector("#field-microphone");
 const fieldMicrophoneStatus = document.querySelector("#field-microphone-status");
 const fieldTargets = new Set(["contact-name", "additional-contacts", "appointment-subject", "appointment-datetime", "appointment-end-datetime", "appointment-status", "mileage", "appointment-notes", "actions"]);
 let fieldSession = null;
-let onlineSpeechConsent = false;
-
-function confirmOnlineSpeech() {
-  if (onlineSpeechConsent) return true;
-  onlineSpeechConsent = confirm("Online recognition may send your voice to your phone's speech provider. It requires internet and may beep or stop after a pause. Enable online recognition?");
-  return onlineSpeechConsent;
-}
-
-try { fieldDictationToggle.checked = localStorage.getItem("wpcrm-dictate-on-tap") !== "false"; } catch { /* Optional preference. */ }
+// Each launch starts in keyboard mode, including the phone keyboard's own dictation.
+fieldDictationToggle.checked = false;
 if (!getSpeechRecognition()) { fieldDictationToggle.checked = false; fieldDictationToggle.disabled = true; }
 
 function stopFieldDictation(message = "Microphone stopped. Your entry is kept.") {
@@ -141,12 +134,6 @@ function startFieldDictation(target) {
   if (fieldSession?.target === target) return;
   stopFieldDictation();
   const Recognition = getSpeechRecognition();
-  if (document.querySelector('#online-speech').checked && !confirmOnlineSpeech()) {
-    setVoiceStatus("Online dictation canceled. Uncheck Online voice recognition for on-device speech."); return;
-  }
-  if (!window.OfflineAndroid && document.querySelector('#online-speech').checked && !navigator.onLine) {
-    showToast("Online speech requires internet. Use the Android app for on-device speech."); return;
-  }
   if (!Recognition) { showToast("Field dictation is unavailable here. Use your keyboard microphone."); return; }
   const label = target.matches('[role="radiogroup"]') ? "Purpose" : document.querySelector(`label[for="${target.id}"]`)?.textContent || "Field";
   const isText = target.type === "text" || target.tagName === "TEXTAREA";
@@ -213,7 +200,7 @@ function startFieldDictation(target) {
     };
     recognition.onend = () => {
       if (!current()) return;
-      if (recognition.native || recognition.offline || document.querySelector('#online-speech').checked) {
+      if (recognition.native || recognition.offline) {
         stopFieldDictation(recognition.finishing ? "Microphone stopped. Your entry is kept." : "Speech service stopped. Your entry is kept. Tap a field to resume.");
         return;
       }
@@ -233,16 +220,6 @@ function startFieldDictation(target) {
 
 fieldDictationToggle.addEventListener("change", () => {
   if (!fieldDictationToggle.checked) stopFieldDictation();
-  try { localStorage.setItem("wpcrm-dictate-on-tap", String(fieldDictationToggle.checked)); } catch { showToast("Setting applies for this session only."); }
-});
-document.querySelector('#online-speech').addEventListener('change', event => {
-  stopFieldDictation();
-  const toggle = event.target;
-  if (toggle.checked && !confirmOnlineSpeech()) toggle.checked = false;
-  fieldDictationToggle.disabled = !getSpeechRecognition();
-  fieldDictationToggle.checked = !fieldDictationToggle.disabled;
-  showNetworkState();
-  setVoiceStatus(toggle.checked ? getSpeechRecognition() ? "Online recognition selected. Tap a field to speak." : "Online recognition is unavailable in this browser. Typing is available." : getSpeechRecognition() ? "On-device recognition selected. Tap a field to speak." : "On-device recognition requires the Android app. Typing is available.");
 });
 document.querySelector("#stop-field-microphone").addEventListener("click", () => {
   if (fieldSession?.recognition.finish) {

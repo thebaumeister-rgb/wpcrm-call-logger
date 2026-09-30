@@ -1,15 +1,15 @@
-# WPCRM Offline Android Preview 31
+# WPCRM Offline Android Preview 32
 
-The APK bundles the existing single-page form, a native AudioRecord microphone, sherpa-onnx 1.13.8, and the English streaming Zipformer2 model (2023-06-26 mobile, int8 encoder/joiner). On-device mode needs no server, account or model download at first launch. Explicit online opt-in uses Android SpeechRecognizer and may send audio through the user's speech provider. The app has ACCESS_NETWORK_STATE but no INTERNET permission; the separate provider owns its network access. Runtime assets load only from the packaged WebView asset origin; other requests are blocked. Browser online speech also requires explicit opt-in. Each fresh launch defaults to online mode, with consent before the first dictation.
+The APK bundles the single-page form, native AudioRecord microphone, sherpa-onnx 1.13.8 and the English Zipformer2 model. Keyboard input is the default. Enable Offline voice recognition for local field-tap dictation. There is no app-managed online speech or cloud fallback, and no INTERNET or ACCESS_NETWORK_STATE permission. Phone-keyboard dictation is separate and governed by its provider.
 
 ## Phone installation and migration
 
 1. In the old browser app, Export JSON to back up saved calls. Keep that app until migration is verified.
-2. Download `wpcrm-offline-v31-preview.apk` from this repository's Android release on the Samsung. This is not the source ZIP or a browser update.
+2. Download `wpcrm-offline-v32-preview.apk` from this repository's Android release on the Samsung. This is not the source ZIP or a browser update.
 3. Open the APK from Downloads. If Android asks, allow installation from that specific source, then turn that permission back off afterward. Do not disable other device security. If a work-device policy blocks installation, ask IT rather than bypassing it.
 4. Open **WPCRM Offline**. Allow microphone access while using the app.
 5. Import saved calls from the backup; import the contact directory separately. Browser storage does not automatically transfer into an Android package.
-6. Uncheck Online voice recognition, then enable airplane mode (also turn Wi-Fi off). Tap Name and speak, pause at least 10 seconds, continue, then press Stop. Check live text, saved calls after reopening, and Export JSON to local Files.
+6. Check Offline voice recognition, then enable airplane mode (also turn Wi-Fi off). Tap Name and speak, pause at least 10 seconds, continue, then press Stop. Check live text, saved calls after reopening, and Export JSON to local Files.
 7. At the office transfer the dated JSON by USB, or share through an approved app after connectivity returns. Deleting/uninstalling this app deletes its local records; export backups first.
 
 Keep the app visible while speaking. It holds the screen awake only during capture. App backgrounding, phone interruptions, revoked permission or an audio-device failure can stop it; there is no automatic restart/beep loop. Stop flushes remaining words before hiding the microphone panel. Speech accuracy, especially names and part numbers, requires review. No microphone audio is written to storage. Shared JSON copies remain in the app's private sharing cache for up to a day, cleaned on the next share. Android backup is disabled.

@@ -42,8 +42,9 @@ class OfflineAcceptanceTest {
         try {
             awaitPage()
             assertEquals("\"object\"", evaluate("typeof OfflineAndroid"))
-            assertEquals("true", evaluate("document.querySelector('#online-speech').checked"))
-            evaluate("document.querySelector('#online-speech').checked = false; document.querySelector('#dictate-on-tap').checked = true; document.querySelector('#contact-name').click()")
+            assertEquals("false", evaluate("document.querySelector('#dictate-on-tap').checked"))
+            assertEquals("true", evaluate("appointmentDatetime.value === nowForInput() && appointmentEndDatetime.value === appointmentDatetime.value"))
+            evaluate("document.querySelector('#dictate-on-tap').checked = true; document.querySelector('#contact-name').click()")
             val microphoneDeadline = System.currentTimeMillis() + 15000
             while (evaluate("document.querySelector('#field-microphone-status').textContent.startsWith('Listening')") != "true" && System.currentTimeMillis() < microphoneDeadline) Thread.sleep(200)
             assertEquals("true", evaluate("document.querySelector('#field-microphone-status').textContent.startsWith('Listening')"))
@@ -78,30 +79,6 @@ class OfflineAcceptanceTest {
         assertFalse(info.requestedPermissions.orEmpty().contains("android.permission.INTERNET"))
     }
 
-    @Test fun onlineSpeechWithoutNetworkReportsErrorWithoutStartingCapture() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val context = instrumentation.targetContext
-        // This suite runs on the isolated test emulator, never a customer's phone.
-        instrumentation.uiAutomation.executeShellCommand("cmd connectivity airplane-mode enable").close()
-        val network = context.getSystemService(android.net.ConnectivityManager::class.java)
-        val deadline = System.currentTimeMillis() + 10000
-        while (network.getNetworkCapabilities(network.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true && System.currentTimeMillis() < deadline) Thread.sleep(100)
-        val events = mutableListOf<String>()
-        val ended = CountDownLatch(1)
-        lateinit var online: OnlineSpeech
-        try {
-            instrumentation.runOnMainSync {
-                online = OnlineSpeech(context) { _, type, text, _ -> events.add("$type:$text"); if (type == "end") ended.countDown() }
-                online.start("offline-online-test")
-            }
-            assertTrue(ended.await(10, TimeUnit.SECONDS))
-            assertTrue(events.toString(), events.any { it.startsWith("error:No internet connection") })
-            assertFalse(events.toString(), events.any { it.startsWith("start:") || it.startsWith("result:") })
-        } finally {
-            instrumentation.runOnMainSync { online.stop(false) }
-            instrumentation.uiAutomation.executeShellCommand("cmd connectivity airplane-mode disable").close()
-        }
-    }
 
     @Test fun microphoneStaysOpenThroughTwelveSecondsOfSilence() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

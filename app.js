@@ -1,4 +1,4 @@
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -398,8 +398,7 @@ function updateMileageVisibility() {
 }
 
 function getSpeechRecognition() {
-  if (window.OfflineSpeechRecognition) return window.OfflineSpeechRecognition;
-  return document.querySelector('#online-speech')?.checked ? (window.SpeechRecognition || window.webkitSpeechRecognition) : undefined;
+  return window.OfflineSpeechRecognition;
 }
 
 function hasDraft() {
@@ -514,7 +513,7 @@ document.querySelector("#check-update").addEventListener("click", async () => {
 document.querySelector("#reload-app").addEventListener("click", reloadAvailableUpdate);
 
 function showNetworkState() {
-  document.querySelector("#connection-status").textContent = document.querySelector('#online-speech')?.checked ? "Online speech selected" : window.OfflineAndroid ? "On-device speech" : "Browser mode";
+  document.querySelector("#connection-status").textContent = window.OfflineAndroid ? "On-device speech available" : "Browser mode";
 }
 window.addEventListener("online", showNetworkState);
 window.addEventListener("offline", showNetworkState);
@@ -651,6 +650,8 @@ if ("serviceWorker" in navigator && !window.OfflineAndroid) {
 
 form.reset();
 form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], textarea').forEach(field => { field.value = ""; });
+appointmentDatetime.value = nowForInput();
+appointmentEndDatetime.value = appointmentDatetime.value;
 form.querySelectorAll('input[name="appointmentType"]').forEach(field => { field.checked = false; });
 updateMileageVisibility();
 renderCalls();
