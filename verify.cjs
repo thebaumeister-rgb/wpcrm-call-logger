@@ -182,6 +182,27 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].appointment_notes), 'Discussed pricing');
       await p.close();
     });
+    await check('Share permission denial downloads intact JSON; cancellation does not download', async () => {
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+        Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { throw new DOMException('Permission denied', 'NotAllowedError'); } });
+      });
+      const before = await page.evaluate(() => getJsonExport());
+      const downloadEvent = page.waitForEvent('download');
+      await page.locator('#share-json').click();
+      const download = await downloadEvent;
+      assert.deepEqual(JSON.parse(await fs.readFile(await download.path(), 'utf8')), JSON.parse(before));
+      assert.equal(await page.locator('#share-status').isVisible(), true);
+      assert.equal(await page.evaluate(() => getJsonExport()), before);
+      await page.evaluate(async () => {
+        navigator.share = async () => { throw new DOMException('Canceled', 'AbortError'); };
+        const original = downloadFile;
+        downloadFile = () => { throw new Error('Unexpected download on cancellation'); };
+        try { await shareJsonExport(); } finally { downloadFile = original; }
+      });
+      assert.equal(await page.locator('#share-status').isHidden(), true);
+      await page.reload();
+    });
     await check('Storage write failure preserves form and saved calls', async () => {
       await page.evaluate(() => { Storage.prototype.setItem = function () { throw new Error('Quota exceeded'); }; });
       await page.locator('#contact-name').fill('Must not disappear');

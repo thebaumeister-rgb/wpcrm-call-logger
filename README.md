@@ -1,4 +1,6 @@
-# WPCRM Call Logger - Version 18
+# WPCRM Call Logger - Version 19
+
+If Share JSON is denied by the browser, the app requests a JSON download and shows persistent next steps. On Samsung, open My Files > Downloads and share the file from there. Export JSON is also available directly. Canceling the share sheet does not download a file or change saved calls. The automated suite now has 17 checks; native phone sharing still requires on-device testing.
 
 The dictation guide is now visual only: Dictate details starts listening without reading the guide aloud. Missing-detail questions still use spoken prompts.
 
@@ -22,13 +24,13 @@ Open https://thebaumeister-rgb.github.io/wpcrm-call-logger/ on your phone.
 
 - iPhone: Safari > Share > Add to Home Screen.
 - Android: Chrome > menu > Install app or Add to Home screen.
-- Open Call Logger and check that it says Version 18.
+- Open Call Logger and check that it says Version 19.
 
 No ZIP download, GitHub account, office computer, or office Wi-Fi is needed. Initially load while online. Manual entry works offline after the offline cache is ready; voice may require internet. Try voice while parked.
 
 See [START-HERE.html](START-HERE.html) for the coworker guide, [FLOWCHART.md](FLOWCHART.md) for the workflow, and [REVIEW.md](REVIEW.md) for fixes and proof limitations.
 
-Version 18 adds the visible dictation guide, "save it" draft preparation and a formatted review log. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 16-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
+Version 19 adds the visible dictation guide, "save it" draft preparation and a formatted review log. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 16-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
 
 Records are stored in this browser on this device, not GitHub or WPCRM. Clearing browser data can remove them. Export backups regularly. Sharing does not prove the file reached OneDrive: check the destination. Exporting does not mark records as entered in WPCRM. Check previously processed entries to avoid duplicates. No Entra registration is needed.
 
@@ -128,7 +130,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://YOUR-COMPUTER-IP:8081/index.html?v=18
+http://YOUR-COMPUTER-IP:8081/index.html?v=19
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

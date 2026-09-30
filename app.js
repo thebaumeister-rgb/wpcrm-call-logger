@@ -148,28 +148,33 @@ function getTimestampedJsonFilename() {
 }
 
 async function shareJsonExport() {
+  const status = document.querySelector("#share-status");
+  status.hidden = true;
   if (!calls.length) {
     showToast("No saved calls to share");
     return;
   }
 
   const filename = getTimestampedJsonFilename();
-  const file = new File([getJsonExport()], filename, {
+  const contents = getJsonExport();
+  const file = new File([contents], filename, {
     type: "application/json",
   });
 
-  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-    await navigator.share({
-      title: "WPCRM sales calls",
-      text: "Save this JSON file to OneDrive/WPCRMCalls.",
-      files: [file],
-    });
-    showToast("File handed to sharing app");
-    return;
+  try {
+    if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+      await navigator.share({ files: [file] });
+      showToast("File handed to sharing app");
+      return;
+    }
+  } catch (error) {
+    if (error.name === "AbortError") { showToast("Sharing canceled. Saved calls are unchanged."); return; }
   }
 
-  downloadFile(filename, getJsonExport(), "application/json");
-  showToast("Sharing unavailable; downloaded JSON");
+  downloadFile(filename, contents, "application/json");
+  status.textContent = `Sharing was blocked or unavailable. A download was requested: ${filename}. On your phone, open My Files > Downloads, select the file, then tap Share. If it is missing, tap Export JSON to retry. Your saved calls are unchanged.`;
+  status.hidden = false;
+  showToast("Sharing unavailable. Check Downloads or tap Export JSON.");
 }
 
 function showToast(message) {

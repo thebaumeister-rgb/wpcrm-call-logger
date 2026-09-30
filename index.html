@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=18">
+    <link rel="manifest" href="manifest.webmanifest?v=19">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=18">
+    <link rel="stylesheet" href="styles.css?v=19">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 18</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 19</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -115,6 +115,7 @@
         <button type="button" id="import-json">Import saved calls</button>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </section>
+      <p id="share-status" role="status" hidden></p>
       <footer class="toolbar"><button type="button" id="install-app" hidden>Install app</button><button type="button" id="check-update">Check for updates</button><button type="button" id="reload-app" hidden>Reload update</button></footer>
 
       <section class="history-section">
@@ -130,7 +131,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=18" defer></script>
-    <script src="entry-tools.js?v=18" defer></script>
+    <script src="app.js?v=19" defer></script>
+    <script src="entry-tools.js?v=19" defer></script>
   </body>
 </html>
