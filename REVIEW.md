@@ -2,7 +2,7 @@
 
 Version 32 removes app-managed online speech and defaults to keyboard entry. Only the optional Offline voice recognition checkbox enables field-tap capture. The bundled local engine is unchanged. New entry times initialize to now; manual start/end edits remain intact.
 
-Validation for this revision covers keyboard-default mode, no online API use, optional local field taps, stop on disable, current entry-time defaults and manual time persistence. Prior Android capture tests below describe the unchanged local engine.
+Validation for this revision covers keyboard-default mode, no online API use, optional local field taps, stop on disable, current entry-time defaults and manual time persistence. Bulk deletion has explicit confirmation with record count and an import/backup reminder. Tests cover cancellation, storage failure, preserved current entry/contact directory and persistent deletion of seven saved records. Prior Android capture tests below describe the unchanged local engine.
 
 Version 30 adds field-aware formatting only to new all-capital offline speech. Names use title case (or an exact imported spelling), prose uses sentence case, selected names in notes keep their spelling, and letter-number part identifiers/common technical acronyms remain uppercase. Formatting rebuilds only the dictated insertion and does not alter manual text or saved records. A new integration test exercises uppercase interim/final events, imported names, apostrophes, identifiers, acronyms and mid-sentence insertion. The browser/bridge suite now contains 26 checks. Version 29's Android microphone tests below are historical evidence for the unchanged capture engine, not a new physical-phone acceptance claim.
 

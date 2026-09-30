@@ -20,6 +20,8 @@ The browser edition supports typing, keyboard dictation, imports and exports, bu
 
 ## Enter A Call
 
+After verifying all exported calls were successfully entered into WPCRM, scroll to Saved calls and choose Delete all saved calls. Confirm the count and keep the JSON backup. Deletion removes local saved records only, not exported files, the contact directory or the current entry. Export never deletes automatically. Individual Delete buttons remain available.
+
 The screen is a single list: Name, Add name, Subject, Time - Start, Time - End, Status, Purpose, Mileage, Notes, and optional Actions.
 
 Keyboard entry is the default. Check Offline voice recognition to enable field-tap dictation:

@@ -339,6 +339,7 @@ function downloadFile(filename, contents, type) {
 
 function renderCalls() {
   entryCount.textContent = String(calls.length);
+  document.querySelector('#delete-all-calls').disabled = !calls.length || storageBlocked;
   emptyState.hidden = calls.length > 0;
   callList.innerHTML = "";
 
@@ -396,6 +397,23 @@ function updateMileageVisibility() {
   mileageField.classList.remove("is-hidden");
   mileage.required = true;
 }
+
+document.querySelector('#delete-all-calls').addEventListener('click', () => {
+  stopFieldDictation();
+  if (!calls.length) return;
+  const count = calls.length;
+  if (!confirm(`Delete ALL ${count} saved calls from this device?\n\nFirst verify that every call was successfully imported into WPCRM and keep your exported JSON backup. This app cannot verify the WPCRM import.\n\nThis cannot be undone. Your contact list, current entry and exported files will remain.`)) return;
+  if (!saveCalls([])) return;
+  // Preserve an open edit as an unsaved new entry, without a deleted record ID.
+  if (editingId) {
+    editingId = null;
+    document.querySelector('#save-call').textContent = 'Save';
+    document.querySelector('#additional-contacts-field').hidden = false;
+    saveDraft();
+  }
+  renderCalls();
+  showToast(`${count} saved calls deleted. Exported files were not changed.`);
+});
 
 function getSpeechRecognition() {
   return window.OfflineSpeechRecognition;

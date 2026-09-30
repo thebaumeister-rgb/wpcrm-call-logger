@@ -588,6 +588,33 @@ async function saveForm(page) {
       assert.equal(await p.evaluate(() => starts), 1);
       await ctx.close();
     });
+    await check('Bulk deletion requires confirmation, preserves draft/contacts, persists and protects storage failures', async () => {
+      const p = await browser.newPage(); await p.goto(base);
+      await p.evaluate(() => {
+        const rows = Array.from({ length: 7 }, (_, i) => ({ id: 'bulk-' + i, contact_name: 'Contact ' + i }));
+        saveCalls(rows); renderCalls();
+        localStorage.setItem('wpcrm-contact-directory-v1', JSON.stringify([{ name: 'Keep contact', id: '1' }]));
+        contactName.value = 'Keep draft'; appointmentNotes.value = 'Keep notes';
+      });
+      let warning = '';
+      p.once('dialog', dialog => { warning = dialog.message(); return dialog.dismiss(); });
+      await p.locator('#delete-all-calls').click();
+      assert.match(warning, /ALL 7/); assert.match(warning, /successfully imported into WPCRM/);
+      assert.equal(await p.locator('.call-card').count(), 7);
+      await p.evaluate(() => { window.originalSet = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error('Storage unavailable'); }; });
+      p.once('dialog', dialog => dialog.accept()); await p.locator('#delete-all-calls').click();
+      assert.equal(await p.locator('.call-card').count(), 7);
+      await p.evaluate(() => { Storage.prototype.setItem = originalSet; editingId = 'bulk-0'; });
+      p.once('dialog', dialog => dialog.accept()); await p.locator('#delete-all-calls').click();
+      assert.equal(await p.locator('.call-card').count(), 0);
+      assert.equal(await p.locator('#delete-all-calls').isDisabled(), true);
+      assert.equal(await p.locator('#contact-name').inputValue(), 'Keep draft');
+      assert.equal(await p.locator('#appointment-notes').inputValue(), 'Keep notes');
+      assert.equal(await p.evaluate(() => editingId), null);
+      assert.match(await p.evaluate(() => localStorage.getItem('wpcrm-contact-directory-v1')), /Keep contact/);
+      await p.reload(); assert.equal(await p.locator('.call-card').count(), 0);
+      await p.close();
+    });
     assert.deepEqual(errors, []);
     await fs.writeFile('proof/test-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: browser.version(), passed, limitations: ['Real phone microphone and native share sheet require on-device acceptance testing.', 'No live WPCRM entries or real customer records were used.'] }, null, 2));
   } finally { await browser.close(); }
