@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=15">
+    <link rel="manifest" href="manifest.webmanifest?v=16">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=15">
+    <link rel="stylesheet" href="styles.css?v=16">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 15</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 16</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -37,8 +37,20 @@
 
       <form id="call-form" class="entry-form">
         <section class="field-block">
+          <label for="spoken-summary">Spoken summary</label>
+          <textarea id="spoken-summary" rows="3" placeholder="Contact Robert Connor. Subject RV16 quote. Type call. Notes Requested pricing. Actions Send quote."></textarea>
+          <div class="toolbar"><button type="button" id="dictate-details">Dictate details</button><button type="button" id="apply-summary">Fill fields</button></div>
+        </section>
+        <section class="field-block">
+          <div class="toolbar"><button type="button" id="import-contacts">Import contacts</button><button type="button" id="clear-contacts">Remove contact list</button></div>
+          <input type="file" id="contacts-file" accept=".csv,.txt,.json" hidden>
+          <p id="contacts-status" role="status">No contact list imported (optional).</p>
+          <datalist id="contact-options"></datalist>
+        </section>
+        <section class="field-block">
           <label for="contact-name">Contact name</label>
-          <input id="contact-name" name="contactName" type="text" autocomplete="name" required placeholder="Robert Connor">
+          <input id="contact-name" name="contactName" type="text" autocomplete="off" list="contact-options" required placeholder="Robert Connor">
+          <p id="contact-match" role="status"></p>
         </section>
 
         <section class="field-block" id="additional-contacts-field">
@@ -94,7 +106,7 @@
         <button type="button" id="export-csv">Export CSV</button>
         <button type="button" id="export-json">Export JSON</button>
         <button type="button" id="share-json">Share JSON</button>
-        <button type="button" id="import-json">Import JSON</button>
+        <button type="button" id="import-json">Import saved calls</button>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </section>
       <footer class="toolbar"><button type="button" id="install-app" hidden>Install app</button><button type="button" id="check-update">Check for updates</button><button type="button" id="reload-app" hidden>Reload update</button></footer>
@@ -111,6 +123,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="app.js?v=15" defer></script>
+    <script src="papaparse.min.js" defer></script>
+    <script src="app.js?v=16" defer></script>
+    <script src="entry-tools.js?v=16" defer></script>
   </body>
 </html>

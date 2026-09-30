@@ -67,6 +67,8 @@ function normalizeCall(call) {
   return {
     id: call.id || crypto.randomUUID(),
     meeting_group_id: call.meeting_group_id || "",
+    contact_id: call.contact_id || "",
+    contact_company: call.contact_company || "",
     wpcrm_workflow: call.wpcrm_workflow || "contact_search_add_completed_appointment",
     contact_name: call.contact_name || "",
     appointment_subject: call.appointment_subject || call.meeting_point || "",
@@ -114,7 +116,7 @@ function validateCalls(rows) {
     for (const key of ["id", "contact_name", "appointment_subject", "appointment_datetime", "appointment_type", "appointment_notes", "actions", "timezone", "recorded_at", "meeting_point", "completed", "wpcrm_workflow"]) {
       if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
     }
-    if (row.meeting_group_id != null && typeof row.meeting_group_id !== "string") throw new Error("Invalid meeting group.");
+    for (const key of ["meeting_group_id", "contact_id", "contact_company"]) if (row[key] != null && typeof row[key] !== "string") throw new Error(`Invalid ${key}.`);
     if (row.mileage != null && typeof row.mileage !== "string" && typeof row.mileage !== "number") throw new Error("Invalid mileage.");
     const call = normalizeCall(row);
     if (!call.contact_name.trim() || !call.appointment_subject.trim() || !call.appointment_notes.trim() || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(call.appointment_datetime) || Number.isNaN(Date.parse(call.appointment_datetime))) throw new Error("A call is missing required details or has an invalid date.");
@@ -189,6 +191,8 @@ function createCallFromForm() {
   return {
     id: editingId || crypto.randomUUID(),
     meeting_group_id: calls.find((call) => call.id === editingId)?.meeting_group_id || "",
+    contact_id: calls.find((call) => call.id === editingId)?.contact_id || "",
+    contact_company: calls.find((call) => call.id === editingId)?.contact_company || "",
     wpcrm_workflow: "contact_search_add_completed_appointment",
     contact_name: data.get("contactName").trim(),
     appointment_subject: data.get("appointmentSubject").trim(),
@@ -209,6 +213,7 @@ function resetForm() {
   document.querySelector("#save-call").textContent = "Save call";
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* Form still works without draft storage. */ }
   form.reset();
+  document.querySelector("#contact-match").textContent = "";
   contactName.value = "";
   appointmentSubject.value = "";
   appointmentNotes.value = "";
@@ -234,12 +239,16 @@ function saveCurrentForm() {
     .map((name) => name.trim()).filter(Boolean).map((name) => [name.toLocaleLowerCase(), name])).values()];
   if (names.length > 50) { showToast("Limit each meeting to 50 contacts."); return false; }
   const groupId = names.length > 1 ? crypto.randomUUID() : call.meeting_group_id;
-  const records = names.map((name, index) => ({ ...call, contact_name: name,
+  let records = names.map((name, index) => ({ ...call, contact_name: name,
     id: index === 0 ? call.id : crypto.randomUUID(), meeting_group_id: groupId,
     mileage: index === 0 ? call.mileage : (call.mileage === "" ? "" : "0") }));
+  if (typeof confirmContactRecords === "function") {
+    records = confirmContactRecords(records);
+    if (!records) return false;
+  }
   try { validateCalls(records); } catch (error) { showToast(error.message); return false; }
   if (records.length > 1 && !confirm(`Save ${records.length} separate appointments with the same notes and actions?\n\n${names.join("\n")}\n\nMileage is recorded only on the first contact. Later edits apply to one appointment at a time.`)) return false;
-  const next = editingId ? calls.map((item) => item.id === editingId ? call : item) : [...records, ...calls];
+  const next = editingId ? calls.map((item) => item.id === editingId ? records[0] : item) : [...records, ...calls];
   if (!saveCalls(next)) return false;
   renderCalls();
   resetForm();
@@ -282,6 +291,8 @@ function toCsv(rows) {
     "actions",
     "timezone",
     "meeting_group_id",
+    "contact_id",
+    "contact_company",
   ];
   const header = fields.join(",");
   const body = rows.map((row) => fields.map((field) => csvEscape(row[field])).join(","));
@@ -372,7 +383,8 @@ function hasDraft() {
 }
 
 function fillForm(call) {
-  contactName.value = call.contact_name || "";
+  contactName.value = [call.contact_name, call.contact_company, call.contact_id].filter(Boolean).join(" | ");
+  document.querySelector("#spoken-summary").value = call.spoken_summary || "";
   additionalContacts.value = call.additional_contacts || "";
   document.querySelector("#additional-contacts-field").hidden = Boolean(editingId);
   appointmentSubject.value = call.appointment_subject || "";
@@ -385,7 +397,7 @@ function fillForm(call) {
 
 function saveDraft() {
   try {
-    if (hasDraft()) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: { ...createCallFromForm(), additional_contacts: additionalContacts.value }, editingId }));
+    if (hasDraft() || document.querySelector("#spoken-summary").value) localStorage.setItem(DRAFT_KEY, JSON.stringify({ call: { ...createCallFromForm(), contact_company: "", contact_id: "", additional_contacts: additionalContacts.value, spoken_summary: document.querySelector("#spoken-summary").value }, editingId }));
     else localStorage.removeItem(DRAFT_KEY);
   } catch { showToast("Draft could not be backed up on this device."); }
 }
@@ -723,9 +735,9 @@ function parseMileage(answer) {
   return total || /\bzero\b/i.test(answer) ? String(total) : "";
 }
 
-async function runVoiceEntry() {
+async function runVoiceEntry(mode = "guided") {
   if (voiceActive) return;
-  if (hasDraft() && !confirm("Start a new voice entry and replace the current draft?")) return;
+  if (mode === "guided" && hasDraft() && !confirm("Start a new voice entry and replace the current draft?")) return;
 
   const SpeechRecognition = getSpeechRecognition();
   if (!SpeechRecognition || !("speechSynthesis" in window)) {
@@ -738,6 +750,7 @@ async function runVoiceEntry() {
   voiceStopRequested = false;
   startVoiceButton.disabled = false;
   startVoiceButton.textContent = "Stop";
+  document.querySelector("#dictate-details").textContent = "Stop listening";
 
   try {
     setVoiceStatus("Starting microphone...");
@@ -750,6 +763,7 @@ async function runVoiceEntry() {
       return;
     }
 
+    if (mode === "summary") { await completeDictation(); return; }
     resetForm();
     setVoiceStatus("Microphone started.");
 
@@ -823,6 +837,7 @@ async function runVoiceEntry() {
     voiceStopRequested = false;
     startVoiceButton.disabled = false;
     startVoiceButton.textContent = "Start voice";
+    document.querySelector("#dictate-details").textContent = "Dictate details";
   }
 }
 
@@ -903,8 +918,8 @@ renderCalls();
 try {
   const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
   if (draft?.call) {
-    fillForm(draft.call);
     editingId = calls.some((call) => call.id === draft.editingId) ? draft.editingId : null;
+    fillForm(draft.call);
     document.querySelector("#save-call").textContent = editingId ? "Save changes" : "Save call";
   }
 } catch { showToast("Saved draft could not be restored."); }

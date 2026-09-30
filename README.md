@@ -1,8 +1,18 @@
-# WPCRM Call Logger - Version 15
+# WPCRM Call Logger - Version 16
 
 ## Multiple Contacts
 
-Enter the first contact normally and optional additional contacts one per line. Confirm the list when saving. Each unique name gets its own appointment record with identical details, notes and actions, plus a shared meeting group ID. Mileage is recorded only on the first contact to avoid multiplying travel totals. Editing or deleting afterward affects only the selected contact's record. Additional contacts are currently entered in the form, not the guided voice questions. Contact-directory verification remains a separate planned feature.
+Enter the first contact normally and optional additional contacts one per line. Confirm the list when saving. Each unique name gets its own appointment record with identical details, notes and actions, plus a shared meeting group ID. Mileage is recorded only on the first contact to avoid multiplying travel totals. Editing or deleting afterward affects only the selected contact's record.
+
+## Import Contacts And Dictate Details
+
+Use **Import contacts** above the contact field. CSV accepts `Contact Name,Company,Contact ID` headers, or `First Name,Last Name,Company,Contact ID`. Company and ID are optional. TXT accepts one name per line; JSON accepts an array of names or contact objects. Excel files must first be exported as CSV. The optional list stays on this device; importing a new list replaces it after confirmation. It is not part of the saved-call backup. Keep the original export. No live CRM connection is implied by a match.
+
+Select a suggested contact to retain its exact name, company and ID. Identical names with different companies/IDs require selection; unlisted names need explicit confirmation. Additional contact lines also accept the full suggestion text (`Name | Company | ID`).
+
+Use **Dictate details** to say, for example: "Contact Robert Connor. Subject RV16 quote. Type call. Notes Requested pricing. Actions Send quotation." Pause for four seconds. Fields fill automatically and the app asks for missing required details, then reads a summary for confirmation. Say "Contacts Robert Connor and Paul Buck" for multiple contacts. The current date/time is the default unless a recognized explicit date is given.
+
+This is label-based parsing, not unrestricted AI understanding. Unlabelled speech is kept as notes and missing fields are asked separately. Review everything before saving. For ordinary non-guided entry, type into any field or use the phone keyboard microphone. You can also dictate into Spoken summary with the keyboard, then tap **Fill fields**; missing required fields are highlighted. The original **Start voice** still asks every question in order.
 
 ## Install Tonight
 
@@ -10,13 +20,13 @@ Open https://thebaumeister-rgb.github.io/wpcrm-call-logger/ on your phone.
 
 - iPhone: Safari > Share > Add to Home Screen.
 - Android: Chrome > menu > Install app or Add to Home screen.
-- Open Call Logger and check that it says Version 15.
+- Open Call Logger and check that it says Version 16.
 
 No ZIP download, GitHub account, office computer, or office Wi-Fi is needed. Initially load while online. Manual entry works offline after the offline cache is ready; voice may require internet. Try voice while parked.
 
 See [START-HERE.html](START-HERE.html) for the coworker guide, [FLOWCHART.md](FLOWCHART.md) for the workflow, and [REVIEW.md](REVIEW.md) for fixes and proof limitations.
 
-Version 15 adds editing, draft recovery, optional actions, JSON backup import, storage protection, installation/update controls, and bounded microphone recovery. Import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 13-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
+Version 16 adds optional contact-directory import and summary dictation to the earlier editing, draft recovery, multi-contact, backup and microphone controls. Saved-call import skips existing IDs, keeping the local copy. The coworker ZIP includes screenshots and the 15-check automated test report. Actual phone microphone quality and sharing still need on-device testing.
 
 Records are stored in this browser on this device, not GitHub or WPCRM. Clearing browser data can remove them. Export backups regularly. Sharing does not prove the file reached OneDrive: check the destination. Exporting does not mark records as entered in WPCRM. Check previously processed entries to avoid duplicates. No Entra registration is needed.
 
@@ -116,7 +126,7 @@ Start the phone-test server:
 Then open this on a phone connected to the same Wi-Fi/network:
 
 ```text
-http://YOUR-COMPUTER-IP:8081/index.html?v=15
+http://YOUR-COMPUTER-IP:8081/index.html?v=16
 ```
 
 This is useful for testing the form and export flow. Voice recognition may still require HTTPS depending on the phone browser.

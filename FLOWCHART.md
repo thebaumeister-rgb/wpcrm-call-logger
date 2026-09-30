@@ -3,15 +3,20 @@
 ```mermaid
 flowchart TD
     A[Install from HTTPS website] --> B[Open phone app]
-    B --> C{Type or voice?}
+    B --> R[Optionally import contact directory]
+    R --> C{Type or voice?}
     C --> D[Enter contact, optional additional contacts, subject, type, date/time and notes]
     C --> E[Answer spoken questions]
+    C --> S[Dictate labeled summary]
+    S --> T[Fill fields and ask for missing details]
+    T --> D
     E --> D
     D --> F{Meeting?}
     F -- Yes --> G[Enter mileage]
     F -- No --> H[Review details and optional actions]
     G --> H
-    H --> I[Save locally on phone]
+    H --> U[Confirm contact matches and resolve ambiguous names]
+    U --> I[Save locally on phone]
     I --> J[Review or edit saved calls]
     J --> K[Share or export timestamped JSON]
     K --> L[Transfer to office PC through OneDrive or another approved method]
