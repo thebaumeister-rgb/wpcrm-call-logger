@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=19">
+    <link rel="manifest" href="manifest.webmanifest?v=20">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=19">
+    <link rel="stylesheet" href="styles.css?v=20">
   </head>
   <body>
     <main class="app-shell">
@@ -24,7 +24,7 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 19</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 20</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <section class="voice-panel" aria-label="Voice entry">
@@ -35,10 +35,10 @@
         <button class="voice-button" id="start-voice" type="button">Start voice</button>
       </section>
 
-      <form id="call-form" class="entry-form">
+      <form id="call-form" class="entry-form" autocomplete="off">
         <section class="field-block">
           <label for="spoken-summary">Spoken summary</label>
-          <textarea id="spoken-summary" rows="3" placeholder="Contact Robert Connor. Subject RV16 quote. Type call. Notes Requested pricing. Actions Send quote."></textarea>
+          <textarea id="spoken-summary" rows="3"></textarea>
           <div class="toolbar"><button type="button" id="dictate-details">Dictate details</button><button type="button" id="apply-summary">Fill fields</button></div>
           <section id="dictation-guide" hidden aria-label="Dictation guide" tabindex="-1">
             <h2>Dictation guide</h2>
@@ -54,7 +54,7 @@
         </section>
         <section class="field-block">
           <label for="contact-name">Contact name</label>
-          <input id="contact-name" name="contactName" type="text" autocomplete="off" list="contact-options" required placeholder="Robert Connor">
+          <input id="contact-name" name="contactName" type="text" autocomplete="off" list="contact-options" required>
           <p id="contact-match" role="status"></p>
         </section>
 
@@ -65,14 +65,14 @@
 
         <section class="field-block">
           <label for="appointment-subject">Appointment subject</label>
-          <input id="appointment-subject" name="appointmentSubject" type="text" required placeholder="Quote RV16 valve">
+          <input id="appointment-subject" name="appointmentSubject" type="text" required>
         </section>
 
         <section class="field-block">
           <span class="label">Appointment type</span>
           <div class="segmented-control" role="radiogroup" aria-label="Appointment type">
             <label>
-              <input type="radio" name="appointmentType" value="Decision-Maker Conference Call" checked>
+              <input type="radio" name="appointmentType" value="Decision-Maker Conference Call" required>
               <span>DM call</span>
             </label>
             <label>
@@ -89,12 +89,12 @@
 
         <section class="field-block mileage-field is-hidden" id="mileage-field" hidden>
           <label for="mileage">Mileage</label>
-          <input id="mileage" name="mileage" type="number" min="0" step="0.1" inputmode="decimal" placeholder="0">
+          <input id="mileage" name="mileage" type="number" min="0" step="0.1" inputmode="decimal">
         </section>
 
         <section class="field-block">
           <label for="appointment-notes">Appointment notes</label>
-          <textarea id="appointment-notes" name="appointmentNotes" rows="6" required placeholder="Robert called to have an RV16-26A quoted..."></textarea>
+          <textarea id="appointment-notes" name="appointmentNotes" rows="6" required></textarea>
         </section>
         <section class="field-block">
           <label for="actions">Actions / to-do items (optional)</label>
@@ -131,7 +131,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="app.js?v=19" defer></script>
-    <script src="entry-tools.js?v=19" defer></script>
+    <script src="app.js?v=20" defer></script>
+    <script src="entry-tools.js?v=20" defer></script>
   </body>
 </html>

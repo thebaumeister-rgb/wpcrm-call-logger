@@ -5,6 +5,13 @@ const path = require('node:path');
 const base = process.env.TEST_URL || 'http://127.0.0.1:8081';
 const passed = [];
 async function check(name, fn) { await fn(); passed.push(name); console.log('PASS', name); }
+async function saveForm(page) {
+  await page.evaluate(() => {
+    if (!appointmentDatetime.value) appointmentDatetime.value = nowForInput();
+    if (!new FormData(form).get('appointmentType')) setAppointmentType('Decision-Maker Conference Call');
+  });
+  await page.locator('#save-call').click();
+}
 (async () => {
   await fs.mkdir('proof', { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
@@ -20,7 +27,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await page.locator('#appointment-subject').fill('Review valve quotation');
       await page.locator('#appointment-notes').fill('Discussed delivery and pricing.');
       await page.locator('#actions').fill('Send the revised quotation tomorrow.');
-      await page.locator('#save-call').click();
+      await saveForm(page);
       assert.equal(await page.locator('.call-card').count(), 1);
       await page.reload();
       assert.match(await page.locator('.call-card').innerText(), /revised quotation/);
@@ -29,15 +36,18 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       const id = await page.evaluate(() => JSON.parse(localStorage.getItem('wpcrm-sales-calls-v1'))[0].id);
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await page.locator('#appointment-subject').fill('Updated quotation');
-      await page.locator('#save-call').click();
+      await saveForm(page);
       assert.equal(await page.locator('.call-card').count(), 1);
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('wpcrm-sales-calls-v1'))[0].id), id);
     });
-    await check('Draft recovery after reload', async () => {
+    await check('Fresh launch clears all entry fields and keeps saved calls', async () => {
       await page.locator('#contact-name').fill('Unfinished draft');
       await page.reload();
-      assert.equal(await page.locator('#contact-name').inputValue(), 'Unfinished draft');
-      page.once('dialog', dialog => dialog.accept());
+      assert.equal(await page.locator('#contact-name').inputValue(), '');
+      assert.equal(await page.locator('#appointment-datetime').inputValue(), '');
+      assert.equal(await page.locator('input[name="appointmentType"]:checked').count(), 0);
+      assert.equal(await page.locator('[placeholder]').count(), 0);
+      assert.equal(await page.locator('.call-card').count(), 1);
       await page.locator('#reset-form').click();
     });
     let exported;
@@ -68,7 +78,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await page.locator('#contact-name').fill('Offline Sample');
       await page.locator('#appointment-subject').fill('Offline call');
       await page.locator('#appointment-notes').fill('Saved without network access.');
-      await page.locator('#save-call').click();
+      await saveForm(page);
       assert.equal(await page.locator('.call-card').count(), 2);
       await context.setOffline(false);
     });
@@ -96,13 +106,12 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await multi.locator('#actions').fill('Follow up');
       await multi.evaluate(() => setAppointmentType('Decision-Maker Meeting'));
       await multi.locator('#mileage').fill('20');
-      await multi.reload();
-      assert.match(await multi.locator('#additional-contacts').inputValue(), /Third Person/);
+      assert.match(await multi.evaluate(() => localStorage.getItem('wpcrm-call-draft-v1')), /Third Person/);
       multi.once('dialog', dialog => dialog.dismiss());
-      await multi.locator('#save-call').click();
+      await saveForm(multi);
       assert.equal(await multi.locator('.call-card').count(), 0);
       multi.once('dialog', dialog => dialog.accept());
-      await multi.locator('#save-call').click();
+      await saveForm(multi);
       const rows = await multi.evaluate(() => JSON.parse(getJsonExport()));
       assert.equal(rows.length, 3);
       assert.equal(new Set(rows.map(row => row.id)).size, 3);
@@ -112,7 +121,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await multi.getByRole('button', { name: 'Edit', exact: true }).first().click();
       assert.equal(await multi.locator('#additional-contacts-field').isHidden(), true);
       await multi.locator('#appointment-notes').fill('Individual correction');
-      await multi.locator('#save-call').click();
+      await saveForm(multi);
       assert.equal(await multi.locator('.call-card').count(), 3);
       await multi.reload();
       const restored = await multi.evaluate(() => JSON.parse(getJsonExport()));
@@ -131,17 +140,17 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await p.locator('#contact-name').fill('Alex Smith');
       await p.locator('#appointment-subject').fill('Quote');
       await p.locator('#appointment-notes').fill('Test');
-      await p.locator('#save-call').click();
+      await saveForm(p);
       assert.equal(await p.locator('.call-card').count(), 0);
       await p.locator('#contact-name').fill('Robert Connor');
       assert.match(await p.locator('#contact-match').textContent(), /matched to imported list/);
-      await p.locator('#save-call').click();
+      await saveForm(p);
       const record = await p.evaluate(() => JSON.parse(getJsonExport())[0]);
       assert.equal(record.contact_id, '42');
       assert.equal(record.contact_company, 'Acme, Inc');
       await p.getByRole('button', { name: 'Edit', exact: true }).click();
       await p.locator('#appointment-notes').fill('Edited');
-      await p.locator('#save-call').click();
+      await saveForm(p);
       assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].contact_id), '42');
       await p.locator('#contacts-file').setInputFiles({ name: 'bad.csv', mimeType: 'text/csv', buffer: Buffer.from('Unknown\nNobody') });
       await p.waitForFunction(() => document.querySelector('#toast').textContent.includes('Contact import failed'));
@@ -150,7 +159,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await p.locator('#appointment-subject').fill('New quote');
       await p.locator('#appointment-notes').fill('Do not save');
       p.once('dialog', dialog => dialog.dismiss());
-      await p.locator('#save-call').click();
+      await saveForm(p);
       assert.equal(await p.locator('.call-card').count(), 1);
       await p.close();
     });
@@ -177,7 +186,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       assert.equal(await p.locator('.call-card').count(), 0);
       assert.equal(await p.locator('#dictation-review').isVisible(), true);
       assert.match(await p.locator('#review-log').textContent(), /Discussed pricing/);
-      await p.locator('#save-call').click();
+      await saveForm(p);
       assert.equal(await p.locator('.call-card').count(), 1);
       assert.equal(await p.evaluate(() => JSON.parse(getJsonExport())[0].appointment_notes), 'Discussed pricing');
       await p.close();
@@ -208,7 +217,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       await page.locator('#contact-name').fill('Must not disappear');
       await page.locator('#appointment-subject').fill('Unsaved');
       await page.locator('#appointment-notes').fill('Keep this draft');
-      await page.locator('#save-call').click();
+      await saveForm(page);
       assert.equal(await page.locator('#contact-name').inputValue(), 'Must not disappear');
       assert.equal(await page.locator('.call-card').count(), 2);
       await page.reload();
@@ -264,7 +273,7 @@ async function check(name, fn) { await fn(); passed.push(name); console.log('PAS
       assert.equal(await p.locator('.call-card').count(), 0);
       assert.match(await p.evaluate(() => localStorage.getItem('wpcrm-call-draft-v1')), /Requested pricing/);
       await p.screenshot({ path: 'proof/dictation-review.png', fullPage: true });
-      await p.locator('#save-call').click();
+      await saveForm(p);
       assert.equal(await p.locator('.call-card').count(), 1);
       await ctx.close();
     });

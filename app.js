@@ -929,17 +929,11 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-appointmentDatetime.value = nowForInput();
+form.reset();
+form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], textarea').forEach(field => { field.value = ""; });
+form.querySelectorAll('input[name="appointmentType"]').forEach(field => { field.checked = false; });
 updateMileageVisibility();
 renderCalls();
-try {
-  const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
-  if (draft?.call) {
-    editingId = calls.some((call) => call.id === draft.editingId) ? draft.editingId : null;
-    fillForm(draft.call);
-    document.querySelector("#save-call").textContent = editingId ? "Save changes" : "Save call";
-  }
-} catch { showToast("Saved draft could not be restored."); }
 showNetworkState();
 if (!getSpeechRecognition()) {
   startVoiceButton.disabled = true;

@@ -138,6 +138,7 @@ async function completeDictation() {
   const text = await askOutLoud("Follow the guide on screen. Say save it when finished.", { collect: true, finishOnSave: true, silent: true });
   summaryField.value = text;
   const found = applySpokenSummary(text);
+  if (!appointmentDatetime.value) appointmentDatetime.value = nowForInput();
   if (!contactName.value.trim()) contactName.value = await askOutLoud("Contact name?");
   if (!appointmentSubject.value.trim()) appointmentSubject.value = await askOutLoud("Appointment subject?");
   if (!found.type) {
