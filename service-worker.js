@@ -1,15 +1,16 @@
-const CACHE_NAME = "wpcrm-call-logger-v35";
+const CACHE_NAME = "wpcrm-call-logger-v36";
 const ASSETS = [
-  "./native-offline.js?v=35",
+  "./contact-settings.js?v=36",
+  "./native-offline.js?v=36",
   "./android-guide.html",
-  "./field-dictation.js?v=35",
-  "./entry-tools.js?v=35",
+  "./field-dictation.js?v=36",
+  "./entry-tools.js?v=36",
   "./papaparse.min.js",
   "./",
   "./index.html",
-  "./styles.css?v=35",
-  "./app.js?v=35",
-  "./manifest.webmanifest?v=35",
+  "./styles.css?v=36",
+  "./app.js?v=36",
+  "./manifest.webmanifest?v=36",
   "./icon-192.png",
   "./icon-512.png",
   "./START-HERE.html",

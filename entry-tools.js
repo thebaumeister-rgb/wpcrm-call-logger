@@ -74,6 +74,10 @@ function confirmContactRecords(records) {
 }
 
 document.querySelector("#import-contacts").onclick = () => document.querySelector("#contacts-file").click();
+document.querySelector("#export-contacts").onclick = () => {
+  if (!directory.length) { showToast("No contacts to export"); return; }
+  downloadFile(getTimestampedJsonFilename().replace("wpcrm-sales-calls", "wpcrm-contacts"), JSON.stringify(directory, null, 2), "application/json");
+};
 document.querySelector("#contacts-file").onchange = async (event) => {
   try {
     const file = event.target.files[0];

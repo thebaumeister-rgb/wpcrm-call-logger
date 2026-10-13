@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="app-version" content="35">
+    <meta name="app-version" content="36">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f68">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="WPCRM Calls">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>WPCRM Call Logger</title>
-    <link rel="manifest" href="manifest.webmanifest?v=35">
+    <link rel="manifest" href="manifest.webmanifest?v=36">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=35">
+    <link rel="stylesheet" href="styles.css?v=36">
   </head>
   <body>
     <main class="app-shell">
@@ -25,7 +25,17 @@
           <span aria-hidden="true">Clear</span>
         </button>
       </header>
-      <div class="app-status"><span>Version 35</span><span id="connection-status" role="status"></span><a href="START-HERE.html">Install &amp; help</a></div>
+      <div class="app-status"><span>Version 36</span><span id="connection-status" role="status"></span><a id="open-setup" href="#setup">Install &amp; help</a></div>
+      <section id="setup-view" hidden aria-labelledby="setup-heading">
+        <button id="close-setup" type="button" style="border:2px solid #1f6f68;padding:12px;min-height:44px">Back to call</button>
+        <h2 id="setup-heading" tabindex="-1">Install &amp; Help</h2>
+        <h3>Contact list (optional)</h3>
+        <div class="toolbar"><button type="button" id="import-contacts">Import contacts</button><button type="button" id="export-contacts">Export contacts</button><button type="button" id="clear-contacts">Remove contact list</button></div>
+        <input type="file" id="contacts-file" accept=".csv,.txt,.json" hidden>
+        <p id="contacts-status" role="status">No contact list imported (optional).</p>
+        <a href="START-HERE.html" target="_blank" rel="noopener">Open installation instructions</a>
+      </section>
+      <div id="call-view">
       <div id="storage-warning" role="alert" hidden>Saved calls could not be read. Saving is blocked to protect the original data. <button type="button" id="recover-storage">Download recovery copy</button></div>
 
       <p id="voice-status" role="status" aria-live="polite">Ready</p>
@@ -33,9 +43,6 @@
       <form id="call-form" class="entry-form" autocomplete="off">
         <label class="field-dictation-setting"><input id="dictate-on-tap" type="checkbox"> Offline voice recognition</label>
         <section class="field-block">
-          <div class="toolbar"><button type="button" id="import-contacts">Import contacts</button><button type="button" id="clear-contacts">Remove contact list</button></div>
-          <input type="file" id="contacts-file" accept=".csv,.txt,.json" hidden>
-          <p id="contacts-status" role="status">No contact list imported (optional).</p>
           <datalist id="contact-options"></datalist>
         </section>
         <section class="field-block">
@@ -115,6 +122,7 @@
         <div id="empty-state" class="empty-state">No calls saved yet.</div>
         <ol id="call-list" class="call-list"></ol>
       </section>
+      </div>
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -124,9 +132,10 @@
     </aside>
 
     <script src="papaparse.min.js" defer></script>
-    <script src="native-offline.js?v=35" defer></script>
-    <script src="app.js?v=35" defer></script>
-    <script src="entry-tools.js?v=35" defer></script>
-    <script src="field-dictation.js?v=35" defer></script>
+    <script src="native-offline.js?v=36" defer></script>
+    <script src="app.js?v=36" defer></script>
+    <script src="entry-tools.js?v=36" defer></script>
+    <script src="field-dictation.js?v=36" defer></script>
+    <script src="contact-settings.js?v=36" defer></script>
   </body>
 </html>
