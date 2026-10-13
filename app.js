@@ -1,4 +1,4 @@
-const APP_VERSION = 32;
+const APP_VERSION = 35;
 const STORAGE_KEY = "wpcrm-sales-calls-v1";
 const JSON_EXPORT_BASENAME = "wpcrm-sales-calls";
 const DRAFT_KEY = "wpcrm-call-draft-v1";
@@ -210,7 +210,7 @@ function createCallFromForm() {
     status: data.get("appointmentStatus"),
     completed: data.get("appointmentStatus") === "Completed" ? "Yes" : "No",
     appointment_type: appointmentType,
-    mileage: data.get("mileage").trim(),
+    mileage: appointmentType === "Decision-Maker Conference Call" ? 0 : data.get("mileage").trim(),
     appointment_notes: data.get("appointmentNotes").trim(),
     actions: data.get("actions").trim(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -252,6 +252,7 @@ function splitAdditionalContacts(value) {
 }
 
 function saveCurrentForm() {
+  updateMileageVisibility();
   if (!form.reportValidity()) return false;
   const call = createCallFromForm();
   const names = [...new Map([call.contact_name, ...(editingId ? [] : splitAdditionalContacts(additionalContacts.value))]
@@ -260,7 +261,7 @@ function saveCurrentForm() {
   const groupId = names.length > 1 ? crypto.randomUUID() : call.meeting_group_id;
   let records = names.map((name, index) => ({ ...call, contact_name: name,
     id: index === 0 ? call.id : crypto.randomUUID(), meeting_group_id: groupId,
-    mileage: index === 0 ? call.mileage : (call.mileage === "" ? "" : "0") }));
+    mileage: call.appointment_type === "Decision-Maker Conference Call" ? 0 : (index === 0 ? call.mileage : (call.mileage === "" ? "" : "0")) }));
   if (typeof confirmContactRecords === "function") {
     records = confirmContactRecords(records);
     if (!records) return false;
@@ -396,6 +397,9 @@ function updateMileageVisibility() {
   mileageField.hidden = false;
   mileageField.classList.remove("is-hidden");
   mileage.required = true;
+  const isCall = document.querySelector('[name="appointmentType"]:checked')?.value === "Decision-Maker Conference Call";
+  if (isCall) mileage.value = "0";
+  mileage.readOnly = isCall;
 }
 
 document.querySelector('#delete-all-calls').addEventListener('click', () => {
@@ -435,6 +439,7 @@ function fillForm(call) {
   document.querySelector("#actions").value = call.actions || "";
   setAppointmentType(call.appointment_type || "Decision-Maker Conference Call");
   mileage.value = call.mileage || "";
+  updateMileageVisibility();
 }
 
 function saveDraft() {
@@ -444,8 +449,8 @@ function saveDraft() {
   } catch { showToast("Draft could not be backed up on this device."); }
 }
 
-form.addEventListener("input", saveDraft);
-form.addEventListener("change", saveDraft);
+form.addEventListener("input", () => { updateMileageVisibility(); saveDraft(); });
+form.addEventListener("change", () => { updateMileageVisibility(); saveDraft(); });
 window.addEventListener("pagehide", saveDraft);
 
 document.querySelector("#import-json").addEventListener("click", () => document.querySelector("#import-file").click());
